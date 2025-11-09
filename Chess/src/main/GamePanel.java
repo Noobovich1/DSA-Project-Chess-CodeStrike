@@ -4,8 +4,17 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.util.ArrayList;
 
 import javax.swing.JPanel;
+
+import piece.Bishop;
+import piece.King;
+import piece.Knight;
+import piece.Pawn;
+import piece.Piece;
+import piece.Queen;
+import piece.Rook;
 
 public class GamePanel extends JPanel implements Runnable{
     public static final int WIDTH = 1100;
@@ -14,14 +23,70 @@ public class GamePanel extends JPanel implements Runnable{
     Thread gameThread;
     Board board = new Board();
 
+    //Color
+    public static final int WHITE = 0;
+    public static final int BLACK = 1;
+    int CURRENT_COLOR = WHITE;
+
+    //ArrayList for pieces
+    public static ArrayList<Piece> pieces = new ArrayList<>(); //back up for such as undo move
+    public static ArrayList<Piece> sPieces = new ArrayList<>(); 
+
     public GamePanel(){
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setBackground(Color.black);
+
+        setPieces();
+        copyPieces(pieces, sPieces);
     }
 
     public void launch(){
         gameThread = new Thread(this);
         gameThread.start(); //call the run method
+    }
+
+    public void setPieces(){
+        //White
+        pieces.add(new Pawn(WHITE, 0, 6));
+        pieces.add(new Pawn(WHITE, 1, 6));
+        pieces.add(new Pawn(WHITE, 2, 6));
+        pieces.add(new Pawn(WHITE, 3, 6));
+        pieces.add(new Pawn(WHITE, 4, 6));
+        pieces.add(new Pawn(WHITE, 5, 6));
+        pieces.add(new Pawn(WHITE, 6, 6));
+        pieces.add(new Pawn(WHITE, 7, 6));
+        pieces.add(new Rook(WHITE, 0, 6));
+        pieces.add(new Rook(WHITE, 7, 6));
+        pieces.add(new Knight(WHITE, 1, 6));
+        pieces.add(new Knight(WHITE, 6, 6));
+        pieces.add(new Bishop(WHITE, 2, 6));
+        pieces.add(new Bishop(WHITE, 5, 6));
+        pieces.add(new Queen(WHITE, 3, 6));
+        pieces.add(new King(WHITE, 4, 6));
+        //Black
+        pieces.add(new Pawn(BLACK, 0, 1));
+        pieces.add(new Pawn(BLACK, 1, 1));
+        pieces.add(new Pawn(BLACK, 2, 1));
+        pieces.add(new Pawn(BLACK, 3, 1));
+        pieces.add(new Pawn(BLACK, 4, 1));
+        pieces.add(new Pawn(BLACK, 5, 1));
+        pieces.add(new Pawn(BLACK, 6, 1));
+        pieces.add(new Pawn(BLACK, 7, 1));
+        pieces.add(new Rook(BLACK, 0, 0));
+        pieces.add(new Rook(BLACK, 7, 0));
+        pieces.add(new Knight(BLACK, 1, 0));
+        pieces.add(new Knight(BLACK, 6, 0));
+        pieces.add(new Bishop(BLACK, 2, 0));
+        pieces.add(new Bishop(BLACK, 5, 0));
+        pieces.add(new Queen(BLACK, 3, 0));
+        pieces.add(new King(BLACK, 4, 0));
+    }
+
+    private void copyPieces(ArrayList<Piece> source, ArrayList<Piece> target){
+        target.clear();
+        for (int i = 0; i < source.size(); i++){
+            target.add(source.get(i));
+        }
     }
 
     @Override
@@ -54,6 +119,12 @@ public class GamePanel extends JPanel implements Runnable{
 
         Graphics2D g2 = (Graphics2D)g;
 
+        //Chess board
         board.draw(g2);
+
+        //Chess pieces
+        for (Piece p : sPieces) {
+            p.draw(g2);
+        }
     }
 }
