@@ -27,7 +27,7 @@ public class Piece {
     public BufferedImage getImage(String imagePath){
         BufferedImage image = null;
         try {
-            image = ImageIO.read(getClass().getResourceAsStream(imagePath + ".png"));
+            image = ImageIO.read(getClass().getResourceAsStream(imagePath+".png"));
         }catch(IOException e) {
             e.printStackTrace();
         }
@@ -35,14 +35,14 @@ public class Piece {
     }
 
     public int getX(int col){
-        return col = 150 + Board.SQUARE_SIZE;
+        return col*Board.SQUARE_SIZE;
     }
 
     public int getY(int row){
-        return row = Board.SQUARE_SIZE;
+        return row*Board.SQUARE_SIZE;
     }
 
     public void draw(Graphics2D g2){
-        g2.drawImage(image, x + 150, y, Board.SQUARE_SIZE, Board.SQUARE_SIZE, null);
+        g2.drawImage(image, x+150, y, Board.SQUARE_SIZE, Board.SQUARE_SIZE, null);
     }
 }
