@@ -42,7 +42,27 @@ public class Piece {
         return row*Board.SQUARE_SIZE;
     }
 
+    //detect the centre of the piece coordinate
+    public int getCol(int x){
+        return (x + Board.HALF_SQUARE_SIZE)/Board.SQUARE_SIZE;
+    }
+
+    public int getRow(int y){
+        return (y + Board.HALF_SQUARE_SIZE)/Board.SQUARE_SIZE;
+    }
+
+    public void updatePos(){
+        x = getX(col);
+        y = getY(row);
+        preCOL = getCol(x);
+        preROW = getRow(y);
+    }
+
+    public boolean canMove(int targetCol, int targetRow){
+        return false;
+    }
+
     public void draw(Graphics2D g2){
-        g2.drawImage(image, x+150, y, Board.SQUARE_SIZE, Board.SQUARE_SIZE, null);
+        g2.drawImage(image, x, y, Board.SQUARE_SIZE, Board.SQUARE_SIZE, null);
     }
 }
