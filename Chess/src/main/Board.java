@@ -20,7 +20,7 @@ public class Board{
                 g2.setColor(new Color(118, 150, 86));
                 c = 0;
             }
-                g2.fillRect(col*SQUARE_SIZE + 150, row*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
+                g2.fillRect(col*SQUARE_SIZE , row*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
             }
             if (c == 0){
                 c = 1;

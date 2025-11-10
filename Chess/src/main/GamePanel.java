@@ -1,5 +1,6 @@
 package main;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -17,11 +18,12 @@ import piece.Queen;
 import piece.Rook;
 
 public class GamePanel extends JPanel implements Runnable{
-    public static final int WIDTH = 1100;
+    public static final int WIDTH = 800;
     public static final int HEIGHT = 800;
     final int FPS = 60;
     Thread gameThread;
     Board board = new Board();
+    Mouse mouse = new Mouse();
 
     //Color
     public static final int WHITE = 0;
@@ -31,10 +33,13 @@ public class GamePanel extends JPanel implements Runnable{
     //ArrayList for pieces
     public static ArrayList<Piece> pieces = new ArrayList<>(); //back up for such as undo move
     public static ArrayList<Piece> sPieces = new ArrayList<>(); 
+    Piece aPiece; //handle the piece that the player is holding
 
     public GamePanel(){
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setBackground(Color.black);
+        addMouseMotionListener(mouse);
+        addMouseListener(mouse);
 
         setPieces();
         copyPieces(pieces, sPieces);
@@ -111,7 +116,39 @@ public class GamePanel extends JPanel implements Runnable{
     }
 
     private void update(){
+        // Mouse pressed
+        if (mouse.pressed){
+            if (aPiece == null){
+                //check if aPiece (active piece) is null or not
+                for (Piece piece : sPieces){
+                    //if mouse is currently on an ally piece, allow mouse interaction with them as aPiece
+                    if (piece.color == CURRENT_COLOR &&
+                        piece.col == mouse.x/Board.SQUARE_SIZE &&
+                        piece.row == mouse.y/Board.SQUARE_SIZE){
+                    aPiece = piece;
+                    }
+                }
+            } else {
+            // if the player holding a piece, simulate the move
+            simulate();
+            }
+        }
 
+        //Mouse released
+        if (mouse.pressed == false){
+            if (aPiece != null){
+                aPiece.updatePos();
+                aPiece = null;
+            }
+        }
+    }
+
+    private void simulate(){
+        //landing position for picked up piece simulation
+        aPiece.x = mouse.x - Board.HALF_SQUARE_SIZE;
+        aPiece.y = mouse.y - Board.HALF_SQUARE_SIZE;
+        aPiece.col = aPiece.getCol(aPiece.x);
+        aPiece.row = aPiece.getRow(aPiece.y);
     }
 
     public void paintComponent(Graphics g){
@@ -125,6 +162,18 @@ public class GamePanel extends JPanel implements Runnable{
         //Chess pieces
         for (Piece p : sPieces) {
             p.draw(g2);
+        }
+
+        if (aPiece != null){
+            g2.setColor(Color.white);
+            //change opacity for the target square
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.7f));
+            g2.fillRect(aPiece.col * Board.SQUARE_SIZE, aPiece.row * Board.SQUARE_SIZE, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
+            // reset alpha otherwise other things will be half transparent too
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+
+            //Draw the aPiece in the end so it won't be hidden by the board or the colored square
+            aPiece.draw(g2);
         }
     }
 }
