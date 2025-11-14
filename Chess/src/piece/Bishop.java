@@ -3,7 +3,7 @@ package piece;
 
 import main.GamePanel;
 
-public class Bishop extends Piece{
+public class Bishop extends piece {
 
     public Bishop(int color, int col, int row) {
         super(color, col, row);

@@ -2,7 +2,7 @@ package piece;
 
 import main.GamePanel;
 
-public class Queen extends Piece{
+public class Queen extends piece {
 
     public Queen(int color, int col, int row) {
         super(color, col, row);

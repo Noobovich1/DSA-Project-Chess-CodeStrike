@@ -6,15 +6,17 @@ import java.io.IOException;
 
 import javax.imageio.ImageIO;
 import main.Board;
+import main.GamePanel;
 
-public class Piece {
+public class piece {
     
     public BufferedImage image;
     public int x,y;
     public int col, row, preCOL, preROW;
     public int color;
+    public piece hittingP;
 
-    public Piece(int color, int col, int row){
+    public piece(int color, int col, int row){
         this.color = color;
         this.row = row;
         this.col = col;
@@ -57,9 +59,54 @@ public class Piece {
         preCOL = getCol(x);
         preROW = getRow(y);
     }
-
+    public void resetPosition(){
+        col=preCOL;
+        row=preROW;
+        x=getX(col);
+        y=getY(row);
+    }
+    public piece getHittingP(int targetCol,int targetRow){
+        for(piece piece: GamePanel.sPieces){
+            if(piece.col==targetCol && piece.row==targetRow && piece!=this){
+                return piece;
+            }
+        }
+        return null;
+    }
+    //FUNCTION ONLY USE FOR REWRITE PURPOSE ONLY DO NOT TOUCH OR I WILL TOUCH YOU
     public boolean canMove(int targetCol, int targetRow){
         return false;
+    }
+    //CHECK IF IT IN THE BOARD
+    public boolean isWithinboard(int targetCol,int targetRow){
+        if((targetCol>=0 && targetCol<=7)&&(targetRow>=0 && targetRow<=7) ){
+            return true;
+        }
+        return false;
+    }
+    // CHECK THE SQUARE IS OCCUPIED OR NOT
+    public boolean  isvalidSquare(int targetCol,int targetRow){
+        hittingP=getHittingP(targetCol,targetRow);
+        if(hittingP==null){
+            return  true;
+        }
+        else{
+            if(hittingP.color!=this.color){
+                return true;
+            }
+            else{
+                hittingP=null;
+            }
+        }
+        return false;
+    }
+    public int getIndexofpiece(){
+        for(int i=0;i<GamePanel.sPieces.size();i++){
+            if(GamePanel.sPieces.get(i)==this){
+                return i;
+            }
+        }
+        return 0;
     }
 
     public void draw(Graphics2D g2){
