@@ -14,6 +14,7 @@ public class King extends piece {
         }
     }
     public boolean canMove(int targetCol,int targetRow){
+        //yesking
         if(isWithinboard(targetCol,targetRow)){
             if(Math.abs(targetCol-preCOL)+Math.abs(targetRow-preROW)==1 ||
                     Math.abs((targetCol-preCOL)*(targetRow-preROW))==1){

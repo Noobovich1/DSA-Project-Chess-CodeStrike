@@ -74,13 +74,103 @@ public class piece {
         return null;
     }
     //FUNCTION ONLY USE FOR REWRITE PURPOSE ONLY DO NOT TOUCH OR I WILL TOUCH YOU
-    public boolean canMove(int targetCol, int targetRow){
+    public  boolean canMove(int targetCol, int targetRow){
         return false;
     }
     //CHECK IF IT IN THE BOARD
     public boolean isWithinboard(int targetCol,int targetRow){
         if((targetCol>=0 && targetCol<=7)&&(targetRow>=0 && targetRow<=7) ){
             return true;
+        }
+        return false;
+    }
+    // CHECK IF PIECE IS ON STRAIGHT LINE
+    public boolean pieceOntheStraightline(int targetCol,int targetRow){
+        //when the piece moving the left
+        for(int c= preCOL-1;c>targetCol;c--){
+            for(piece piece: GamePanel.sPieces){
+                if(piece.col==c && piece.row==targetRow){
+                    hittingP=piece;
+                    return true;
+                }
+            }
+        }
+        //when the piece mobing right
+        for(int c= preCOL+1;c<targetCol;c++){
+            for(piece piece: GamePanel.sPieces){
+                if(piece.col==c && piece.row==targetRow){
+                    hittingP=piece;
+                    return true;
+                }
+            }
+        }
+        //when the piece moving down
+        for(int r= preROW+1;r<targetRow;r++){
+            for(piece piece: GamePanel.sPieces){
+                if(piece.row==r && piece.row==targetRow){
+                    hittingP=piece;
+                    return true;
+                }
+            }
+        }
+        //when the pig fly(moving up)
+        for(int r= preROW-1;r>targetRow;r--){
+            for(piece piece: GamePanel.sPieces){
+                if(piece.row==r && piece.row==targetRow){
+                    hittingP=piece;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    //CHECK FOR THE DIAGONAL MOVEMENT
+    public boolean pieceOnDiagonalmovement(int targetCol,int targertRow){
+        if(targertRow<preROW){
+            //UPLEFT
+            for(int c=preCOL-1;c>targetCol;c--){
+                int diff=Math.abs(c-preCOL);
+                for(piece piece:GamePanel.sPieces){
+                    if(piece.col==c && piece.row==preROW-diff){
+                        hittingP=piece;
+                        return true;
+                    }
+                }
+            }
+            //UP RIGHT
+            for(int c=preCOL+1;c<targetCol;c++) {
+                int diff = Math.abs(c - preCOL);
+                for (piece piece : GamePanel.sPieces) {
+                    if (piece.col == c && piece.row == preROW + diff) {
+                        hittingP = piece;
+                        return true;
+                    }
+                }
+            }
+        }
+        if(targertRow>preROW){
+            //DOWNLEFT
+            for(int c=preCOL-1;c>targetCol;c--){
+                int diff=Math.abs(c-preCOL);
+                    for(piece piece:GamePanel.sPieces){
+                        if(piece.col==c && piece.row==preROW+diff){
+                            hittingP= piece;
+                            return true;
+                        }
+                    }
+
+            }
+            //DOWNRIGHT
+            for(int c=preCOL+1;c<targetCol;c++){
+                int diff=Math.abs(c-preCOL);
+                    for(piece piece:GamePanel.sPieces){
+                        if(piece.col==c && piece.row==preROW+diff){
+                            hittingP= piece;
+                            return true;
+                        }
+                    }
+
+            }
         }
         return false;
     }
