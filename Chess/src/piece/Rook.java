@@ -14,13 +14,14 @@ public class Rook extends piece {
         }
     }
         public boolean canMove(int targetCol,int targetRow){
-            if(isWithinboard(targetCol,targetRow)){
-                if(isvalidSquare(targetCol,targetRow)) {
-                    if((Math.abs(targetCol-preCOL)*Math.abs(targetRow-preROW)==0)&&(pieceOntheStraightline(targetCol,targetRow)==false)){
-                        return true;
+            if(isWithinboard(targetCol,targetRow)&& (!isSameSquare(targetCol, targetRow))){
+                    if(targetCol==preCOL || targetRow==preROW){
+                        if(isvalidSquare(targetCol,targetRow)&&!pieceOntheStraightline(targetCol,targetRow)){
+                            return true;
+                        }
                     }
-                }
+
             }
             return false;
         }
-}
+    }

@@ -84,6 +84,13 @@ public class piece {
         }
         return false;
     }
+    //CHECK THE PIECE ON THE SAME SQUARE
+    public boolean isSameSquare(int targetCol,int targetRow){
+        if(targetCol==preCOL && targetRow==preROW){
+            return true;
+        }
+        return false;
+    }
     // CHECK IF PIECE IS ON STRAIGHT LINE
     public boolean pieceOntheStraightline(int targetCol,int targetRow){
         //when the piece moving the left
@@ -107,7 +114,7 @@ public class piece {
         //when the piece moving down
         for(int r= preROW+1;r<targetRow;r++){
             for(piece piece: GamePanel.sPieces){
-                if(piece.row==r && piece.row==targetRow){
+                if(piece.row==r && piece.col==targetCol){
                     hittingP=piece;
                     return true;
                 }
@@ -116,7 +123,7 @@ public class piece {
         //when the pig fly(moving up)
         for(int r= preROW-1;r>targetRow;r--){
             for(piece piece: GamePanel.sPieces){
-                if(piece.row==r && piece.row==targetRow){
+                if(piece.row==r && piece.col==targetCol){
                     hittingP=piece;
                     return true;
                 }
@@ -126,7 +133,7 @@ public class piece {
     }
     //CHECK FOR THE DIAGONAL MOVEMENT
     public boolean pieceOnDiagonalmovement(int targetCol,int targertRow){
-        if(targertRow<preROW){
+        if(targertRow < preROW){
             //UPLEFT
             for(int c=preCOL-1;c>targetCol;c--){
                 int diff=Math.abs(c-preCOL);
