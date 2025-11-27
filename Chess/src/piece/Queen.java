@@ -2,7 +2,7 @@ package piece;
 
 import main.GamePanel;
 
-public class Queen extends Piece{
+public class Queen extends piece {
 
     public Queen(int color, int col, int row) {
         super(color, col, row);
@@ -12,5 +12,22 @@ public class Queen extends Piece{
         }else {
             image = getImage("/pieceImage/bqueen");
         }
+    }
+
+    @Override
+    public boolean canMove(int targetCol, int targetRow) {
+        //vertical & Horizontal
+        if(targetCol==preCOL || targetRow==preROW){
+            if(isvalidSquare(targetCol,targetRow)&& pieceOntheStraightline(targetCol,targetRow)==false){
+                return true;
+            }
+        }
+        //DiagonalMovemment
+        if(Math.abs(targetCol-preCOL)==Math.abs(targetRow-preROW)){
+            if(isvalidSquare(targetCol,targetRow)&& pieceOnDiagonalmovement(targetCol,targetRow)==false){
+                return true;
+            }
+        }
+        return false;
     }
 }

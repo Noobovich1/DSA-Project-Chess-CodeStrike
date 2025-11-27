@@ -12,7 +12,6 @@ public class main {
         GamePanel gp = new GamePanel();
         window.add(gp);
         window.pack();
-
         window.setLocationRelativeTo(null); // window will appear at the centre of the screen not top left
         window.setVisible(true);
 
