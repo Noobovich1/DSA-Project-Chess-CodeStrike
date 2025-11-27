@@ -66,7 +66,7 @@ public class piece {
         y=getY(row);
     }
     public piece getHittingP(int targetCol,int targetRow){
-        for(piece piece: GamePanel.sPieces){
+        for(piece piece: GamePanel.simPieces){
             if(piece.col==targetCol && piece.row==targetRow && piece!=this){
                 return piece;
             }
@@ -95,16 +95,16 @@ public class piece {
     public boolean pieceOntheStraightline(int targetCol,int targetRow){
         //when the piece moving the left
         for(int c= preCOL-1;c>targetCol;c--){
-            for(piece piece: GamePanel.sPieces){
+            for(piece piece: GamePanel.simPieces){
                 if(piece.col==c && piece.row==targetRow){
                     hittingP=piece;
                     return true;
                 }
             }
         }
-        //when the piece mobing right
+        //when the piece moving right
         for(int c= preCOL+1;c<targetCol;c++){
-            for(piece piece: GamePanel.sPieces){
+            for(piece piece: GamePanel.simPieces){
                 if(piece.col==c && piece.row==targetRow){
                     hittingP=piece;
                     return true;
@@ -113,7 +113,7 @@ public class piece {
         }
         //when the piece moving down
         for(int r= preROW+1;r<targetRow;r++){
-            for(piece piece: GamePanel.sPieces){
+            for(piece piece: GamePanel.simPieces){
                 if(piece.row==r && piece.col==targetCol){
                     hittingP=piece;
                     return true;
@@ -122,7 +122,7 @@ public class piece {
         }
         //when the pig fly(moving up)
         for(int r= preROW-1;r>targetRow;r--){
-            for(piece piece: GamePanel.sPieces){
+            for(piece piece: GamePanel.simPieces){
                 if(piece.row==r && piece.col==targetCol){
                     hittingP=piece;
                     return true;
@@ -132,12 +132,12 @@ public class piece {
         return false;
     }
     //CHECK FOR THE DIAGONAL MOVEMENT
-    public boolean pieceOnDiagonalmovement(int targetCol,int targertRow){
-        if(targertRow < preROW){
+    public boolean pieceOnDiagonalmovement(int targetCol,int targetRow){
+        if(targetRow < preROW){
             //UPLEFT
             for(int c=preCOL-1;c>targetCol;c--){
                 int diff=Math.abs(c-preCOL);
-                for(piece piece:GamePanel.sPieces){
+                for(piece piece:GamePanel.simPieces){
                     if(piece.col==c && piece.row==preROW-diff){
                         hittingP=piece;
                         return true;
@@ -147,19 +147,19 @@ public class piece {
             //UP RIGHT
             for(int c=preCOL+1;c<targetCol;c++) {
                 int diff = Math.abs(c - preCOL);
-                for (piece piece : GamePanel.sPieces) {
-                    if (piece.col == c && piece.row == preROW + diff) {
+                for (piece piece : GamePanel.simPieces) {
+                    if (piece.col == c && piece.row == preROW - diff) {
                         hittingP = piece;
                         return true;
                     }
                 }
             }
         }
-        if(targertRow>preROW){
+        if(targetRow>preROW){
             //DOWNLEFT
             for(int c=preCOL-1;c>targetCol;c--){
                 int diff=Math.abs(c-preCOL);
-                    for(piece piece:GamePanel.sPieces){
+                    for(piece piece:GamePanel.simPieces){
                         if(piece.col==c && piece.row==preROW+diff){
                             hittingP= piece;
                             return true;
@@ -170,7 +170,7 @@ public class piece {
             //DOWNRIGHT
             for(int c=preCOL+1;c<targetCol;c++){
                 int diff=Math.abs(c-preCOL);
-                    for(piece piece:GamePanel.sPieces){
+                    for(piece piece:GamePanel.simPieces){
                         if(piece.col==c && piece.row==preROW+diff){
                             hittingP= piece;
                             return true;
@@ -198,8 +198,8 @@ public class piece {
         return false;
     }
     public int getIndexofpiece(){
-        for(int i=0;i<GamePanel.sPieces.size();i++){
-            if(GamePanel.sPieces.get(i)==this){
+        for(int i = 0; i<GamePanel.simPieces.size(); i++){
+            if(GamePanel.simPieces.get(i)==this){
                 return i;
             }
         }

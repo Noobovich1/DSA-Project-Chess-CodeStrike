@@ -28,7 +28,7 @@ public class GamePanel extends JPanel implements Runnable{
 
     //ArrayList for pieces
     public static ArrayList<piece> pieces = new ArrayList<>(); //back up for such as undo move
-    public static ArrayList<piece> sPieces = new ArrayList<>();
+    public static ArrayList<piece> simPieces = new ArrayList<>();
     piece aPiece; //handle the piece that the player is holding
 
     //BOOLEAN
@@ -42,7 +42,7 @@ public class GamePanel extends JPanel implements Runnable{
         addMouseListener(mouse);
 
         setPieces();
-        copyPieces(pieces, sPieces);
+        copyPieces(pieces, simPieces);
     }
 
     public void launch(){
@@ -68,8 +68,7 @@ public class GamePanel extends JPanel implements Runnable{
         pieces.add(new Bishop(WHITE, 5, 7));
         pieces.add(new Queen(WHITE, 3, 7));
         pieces.add(new King(WHITE, 4, 7));
-        pieces.add(new Rook(WHITE,4,4));
-        pieces.add(new Bishop(WHITE,5,5));
+        pieces.add(new Queen(WHITE,4,4));
         //Black
         pieces.add(new Pawn(BLACK, 0, 1));
         pieces.add(new Pawn(BLACK, 1, 1));
@@ -122,7 +121,7 @@ public class GamePanel extends JPanel implements Runnable{
         if (mouse.pressed){
             if (aPiece == null){
                 //check if aPiece (active piece) is null or not
-                for (piece piece : sPieces){
+                for (piece piece : simPieces){
                     //if mouse is currently on an ally piece, allow mouse interaction with them as aPiece
                     if (piece.color == CURRENT_COLOR &&
                         piece.col == mouse.x/Board.SQUARE_SIZE &&
@@ -141,11 +140,11 @@ public class GamePanel extends JPanel implements Runnable{
             if (aPiece != null){
                 if(vaildSquare){
                     //MOVE CONFIRMED
-                    copyPieces(sPieces,pieces);
+                    copyPieces(simPieces,pieces);
                     aPiece.updatePos();
                 }
                 else {
-                    copyPieces(pieces,sPieces);
+                    copyPieces(pieces, simPieces);
                     aPiece.resetPosition();
                     aPiece = null;// resset to the original row and col
                 }
@@ -157,7 +156,7 @@ public class GamePanel extends JPanel implements Runnable{
     private void simulate(){
         canMove=false;
         vaildSquare=false;
-        copyPieces(pieces,sPieces);
+        copyPieces(pieces, simPieces);
         //landing position for picked up piece simulation
         aPiece.x = mouse.x - Board.HALF_SQUARE_SIZE;
         aPiece.y = mouse.y - Board.HALF_SQUARE_SIZE;
@@ -166,7 +165,7 @@ public class GamePanel extends JPanel implements Runnable{
         if(aPiece.canMove(aPiece.col,aPiece.row)){
             canMove=true;
             if(aPiece.hittingP!=null){
-                sPieces.remove(aPiece.hittingP.getIndexofpiece());
+                simPieces.remove(aPiece.hittingP.getIndexofpiece());
             }
             vaildSquare=true;
         }
@@ -181,7 +180,7 @@ public class GamePanel extends JPanel implements Runnable{
         board.draw(g2);
 
         //Chess pieces
-        for (piece p : sPieces) {
+        for (piece p : simPieces) {
             p.draw(g2);
         }
 
