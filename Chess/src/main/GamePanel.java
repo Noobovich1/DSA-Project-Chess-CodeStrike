@@ -14,7 +14,7 @@ import piece.Queen;
 import piece.Rook;
 
 public class GamePanel extends JPanel implements Runnable{
-    public static final int WIDTH = 800;
+    public static final int WIDTH = 1200;
     public static final int HEIGHT = 800;
     final int FPS = 60;
     Thread gameThread;
@@ -30,6 +30,7 @@ public class GamePanel extends JPanel implements Runnable{
     public static ArrayList<piece> pieces = new ArrayList<>(); //back up for such as undo move
     public static ArrayList<piece> simPieces = new ArrayList<>();
     piece aPiece; //handle the piece that the player is holding
+    public static piece castlingPiece;
 
     //BOOLEAN
     boolean canMove;
@@ -68,7 +69,6 @@ public class GamePanel extends JPanel implements Runnable{
         pieces.add(new Bishop(WHITE, 5, 7));
         pieces.add(new Queen(WHITE, 3, 7));
         pieces.add(new King(WHITE, 4, 7));
-        pieces.add(new Queen(WHITE,4,4));
         //Black
         pieces.add(new Pawn(BLACK, 0, 1));
         pieces.add(new Pawn(BLACK, 1, 1));
@@ -142,6 +142,11 @@ public class GamePanel extends JPanel implements Runnable{
                     //MOVE CONFIRMED
                     copyPieces(simPieces,pieces);
                     aPiece.updatePos();
+                    if (castlingPiece != null){
+                        castlingPiece.updatePos();
+                    }
+
+                    changePlayer();
                 }
                 else {
                     copyPieces(pieces, simPieces);
@@ -157,6 +162,13 @@ public class GamePanel extends JPanel implements Runnable{
         canMove=false;
         vaildSquare=false;
         copyPieces(pieces, simPieces);
+        
+        //fix the bug where if a player pick up a king and not castle, the rook would then be teleport to castled position despite no castle has been made 
+        if (castlingPiece != null){
+            castlingPiece.col = castlingPiece.preCOL;
+            castlingPiece.x = castlingPiece.getX(castlingPiece.col);
+            castlingPiece = null;
+        }
         //landing position for picked up piece simulation
         aPiece.x = mouse.x - Board.HALF_SQUARE_SIZE;
         aPiece.y = mouse.y - Board.HALF_SQUARE_SIZE;
@@ -167,8 +179,42 @@ public class GamePanel extends JPanel implements Runnable{
             if(aPiece.hittingP!=null){
                 simPieces.remove(aPiece.hittingP.getIndexofpiece());
             }
+            checkCastling();
             vaildSquare=true;
         }
+    }
+
+    public void checkCastling(){
+        if (castlingPiece != null){
+            if (castlingPiece.col == 0){
+                castlingPiece.col += 3;
+            } else if (castlingPiece.col == 7){
+                castlingPiece.col -=2;
+            }
+            castlingPiece.x =castlingPiece.getX(castlingPiece.col);
+        }
+    }
+
+    public void changePlayer(){
+
+        if (CURRENT_COLOR == WHITE){
+            CURRENT_COLOR = BLACK;
+            //reset twoStepped(ahead) status
+            for (piece piece: pieces){
+                if (piece.col == BLACK){
+                    piece.twoStepped = false;
+                }
+            }
+
+        } else {
+            CURRENT_COLOR = WHITE;
+            for (piece piece: pieces){
+                if (piece.col == WHITE){
+                    piece.twoStepped = false;
+                }
+            }
+        }
+        aPiece = null;
     }
 
     public void paintComponent(Graphics g){
@@ -195,6 +241,15 @@ public class GamePanel extends JPanel implements Runnable{
             }
             //Draw the aPiece in the end so it won't be hidden by the board or the colored square
             aPiece.draw(g2);
+        }
+        // status panel
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g2.setFont(new Font("Aptos", Font.PLAIN, 42));
+        g2.setColor(Color.white);
+        if (CURRENT_COLOR == WHITE){
+            g2.drawString("White's turn", 880, 600);
+        } else {
+            g2.drawString("Black's turn", 880, 200);
         }
     }
 }

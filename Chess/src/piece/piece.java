@@ -7,14 +7,17 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 import main.Board;
 import main.GamePanel;
+import main.Type;
 
 public class piece {
     
+    public Type type;
     public BufferedImage image;
     public int x,y;
     public int col, row, preCOL, preROW;
     public int color;
     public piece hittingP;
+    public boolean moved, twoStepped;
 
     public piece(int color, int col, int row){
         this.color = color;
@@ -54,10 +57,17 @@ public class piece {
     }
 
     public void updatePos(){
+        //check for peak (holy hell)
+        if (type == Type.PAWN){
+            if (Math.abs(row - preROW) == 2){
+                twoStepped = true;
+            }
+        }
         x = getX(col);
         y = getY(row);
         preCOL = getCol(x);
         preROW = getRow(y);
+        moved = true;
     }
     public void resetPosition(){
         col=preCOL;
