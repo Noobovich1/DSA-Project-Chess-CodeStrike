@@ -16,7 +16,6 @@ public class King extends piece {
         }
     }
     public boolean canMove(int targetCol,int targetRow){
-        //yesking
         if(isWithinboard(targetCol,targetRow)){
             if(Math.abs(targetCol-preCOL)+Math.abs(targetRow-preROW)==1 ||
                     Math.abs((targetCol-preCOL)*(targetRow-preROW))==1){
@@ -25,10 +24,10 @@ public class King extends piece {
                 }
             }
         }
-        //I like to move it move it (castling)
+        //check castling
         if (moved == false){
             //short castling O-O
-            if (targetCol == preCOL + 2 && targetRow == preROW && pieceOntheStraightline(targetCol, targetRow) == false){
+            if (targetCol == preCOL + 2 && targetRow == preROW && pieceIsOnStraightLine(targetCol, targetRow) == false){
                 //we scan the piece 3 square to the right side of the starting king position (the rook) to check if it moved or not
                 for (piece piece : GamePanel.simPieces){
                     if (piece.col == preCOL + 3 && piece.row == preROW && piece.moved == false){
@@ -38,7 +37,7 @@ public class King extends piece {
                 }
             }
             //long castling O-O-O
-            if (targetCol == preCOL - 2 && targetRow == preROW && pieceOntheStraightline(targetCol, targetRow) == false){
+            if (targetCol == preCOL - 2 && targetRow == preROW && pieceIsOnStraightLine(targetCol, targetRow) == false){
                 piece p[] = new piece[2];
                 for (piece piece : GamePanel.simPieces){
                     if (piece.col == preCOL - 3 && piece.row == targetRow){
