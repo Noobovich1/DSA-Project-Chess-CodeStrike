@@ -15,16 +15,14 @@ public class Knight extends piece {
             image = getImage("/pieceImage/bknight");
         }
     }
-
-    public boolean canMove(int targetCol, int targetRow){
-        if(isWithinboard(targetCol, targetRow)){
-            if((Math.abs(targetCol-preCOL) * Math.abs(targetRow - preROW)) == 2){
-                if(isvalidSquare(targetCol, targetRow)){
-                    return true;
+    public boolean canMove(int targetCol,int targetRow){
+        if(isWithinboard(targetCol,targetRow)){
+                if(isvalidSquare(targetCol,targetRow)) {
+                    if(Math.abs(targetCol-preCOL)*Math.abs(targetRow-preROW)==2){
+                        return true;
                 }
             }
         }
         return false;
     }
-    
 }
