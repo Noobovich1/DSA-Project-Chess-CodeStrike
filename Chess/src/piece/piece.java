@@ -8,9 +8,11 @@ import main.Type;
 import javax.imageio.ImageIO;
 import main.Board;
 import main.GamePanel;
+import main.Type;
 
 public class piece {
     
+    public Type type;
     public BufferedImage image;
     public int x,y;
     public int col, row, preCOL, preROW;
@@ -57,6 +59,12 @@ public class piece {
     }
 
     public void updatePos(){
+        //check for peak (holy hell)
+        if (type == Type.PAWN){
+            if (Math.abs(row - preROW) == 2){
+                twoStepped = true;
+            }
+        }
         x = getX(col);
         y = getY(row);
         preCOL = getCol(x);
@@ -84,13 +92,110 @@ public class piece {
         return null;
     }
     //FUNCTION ONLY USE FOR REWRITE PURPOSE ONLY DO NOT TOUCH OR I WILL TOUCH YOU
-    public boolean canMove(int targetCol, int targetRow){
+    public  boolean canMove(int targetCol, int targetRow){
         return false;
     }
     //CHECK IF IT IN THE BOARD
     public boolean isWithinboard(int targetCol,int targetRow){
         if((targetCol>=0 && targetCol<=7)&&(targetRow>=0 && targetRow<=7) ){
             return true;
+        }
+        return false;
+    }
+    //CHECK THE PIECE ON THE SAME SQUARE
+    public boolean isSameSquare(int targetCol,int targetRow){
+        if(targetCol==preCOL && targetRow==preROW){
+            return true;
+        }
+        return false;
+    }
+    // CHECK IF PIECE IS ON STRAIGHT LINE
+    public boolean pieceOntheStraightline(int targetCol,int targetRow){
+        //when the piece moving the left
+        for(int c= preCOL-1;c>targetCol;c--){
+            for(piece piece: GamePanel.simPieces){
+                if(piece.col==c && piece.row==targetRow){
+                    hittingP=piece;
+                    return true;
+                }
+            }
+        }
+        //when the piece moving right
+        for(int c= preCOL+1;c<targetCol;c++){
+            for(piece piece: GamePanel.simPieces){
+                if(piece.col==c && piece.row==targetRow){
+                    hittingP=piece;
+                    return true;
+                }
+            }
+        }
+        //when the piece moving down
+        for(int r= preROW+1;r<targetRow;r++){
+            for(piece piece: GamePanel.simPieces){
+                if(piece.row==r && piece.col==targetCol){
+                    hittingP=piece;
+                    return true;
+                }
+            }
+        }
+        //when the pig fly(moving up)
+        for(int r= preROW-1;r>targetRow;r--){
+            for(piece piece: GamePanel.simPieces){
+                if(piece.row==r && piece.col==targetCol){
+                    hittingP=piece;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    //CHECK FOR THE DIAGONAL MOVEMENT
+    public boolean pieceOnDiagonalmovement(int targetCol,int targetRow){
+        if(targetRow < preROW){
+            //UPLEFT
+            for(int c=preCOL-1;c>targetCol;c--){
+                int diff=Math.abs(c-preCOL);
+                for(piece piece:GamePanel.simPieces){
+                    if(piece.col==c && piece.row==preROW-diff){
+                        hittingP=piece;
+                        return true;
+                    }
+                }
+            }
+            //UP RIGHT
+            for(int c=preCOL+1;c<targetCol;c++) {
+                int diff = Math.abs(c - preCOL);
+                for (piece piece : GamePanel.simPieces) {
+                    if (piece.col == c && piece.row == preROW - diff) {
+                        hittingP = piece;
+                        return true;
+                    }
+                }
+            }
+        }
+        if(targetRow>preROW){
+            //DOWNLEFT
+            for(int c=preCOL-1;c>targetCol;c--){
+                int diff=Math.abs(c-preCOL);
+                    for(piece piece:GamePanel.simPieces){
+                        if(piece.col==c && piece.row==preROW+diff){
+                            hittingP= piece;
+                            return true;
+                        }
+                    }
+
+            }
+            //DOWNRIGHT
+            for(int c=preCOL+1;c<targetCol;c++){
+                int diff=Math.abs(c-preCOL);
+                    for(piece piece:GamePanel.simPieces){
+                        if(piece.col==c && piece.row==preROW+diff){
+                            hittingP= piece;
+                            return true;
+                        }
+                    }
+
+            }
         }
         return false;
     }
@@ -221,3 +326,4 @@ public class piece {
         g2.drawImage(image, x, y, Board.SQUARE_SIZE, Board.SQUARE_SIZE, null);
     }
 }
+
