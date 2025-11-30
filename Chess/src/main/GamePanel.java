@@ -24,6 +24,7 @@ public class GamePanel extends JPanel implements Runnable{
     Thread gameThread;
     Board board = new Board();
     Mouse mouse = new Mouse();
+    Keyboard keyboard=new Keyboard();
 
     //Color
     public static final int WHITE = 0;
@@ -61,6 +62,9 @@ public class GamePanel extends JPanel implements Runnable{
         setBackground(Color.black);
         addMouseMotionListener(mouse);
         addMouseListener(mouse);
+        addKeyListener(keyboard);
+        requestFocusInWindow();
+        setFocusable(true);
 
         //load background image
         try {
