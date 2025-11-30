@@ -37,7 +37,7 @@ public class GamePanel extends JPanel implements Runnable{
 
     //BOOLEAN
     boolean canMove;
-    boolean vaildSquare;
+    boolean validSquare;
     boolean promotion;
     boolean gameOver;
     boolean stalemate;
@@ -105,7 +105,7 @@ public class GamePanel extends JPanel implements Runnable{
         // Reset game state
         aPiece = null;
         canMove = false;
-        vaildSquare = false;
+        validSquare = false;
         CURRENT_COLOR = WHITE;
 
         // Set up pieces again
@@ -176,7 +176,7 @@ private void update(){
     // Mouse released
     if (!mouse.pressed){
         if (aPiece != null){
-            if (vaildSquare){
+            if (validSquare){
                 // MOVE CONFIRMED
                 copyPieces(simPieces, pieces);
                 aPiece.updatePos();
@@ -215,7 +215,7 @@ private void update(){
 
     private void simulate(){
         canMove=false;
-        vaildSquare=false;
+        validSquare=false;
         copyPieces(pieces, simPieces);
         
         //fix the bug where if a player pick up a king and not castle, the rook would then be teleport to castled position despite no castle has been made 
@@ -237,7 +237,7 @@ private void update(){
             checkCastling();
 
             if (!isIllegal(aPiece) && !currentlyInCheck()){
-                vaildSquare=true;
+                validSquare=true;
             }
         }
     }
