@@ -228,15 +228,6 @@ public class GamePanel extends JPanel implements Runnable{
                     if (castlingPiece != null){
                         castlingPiece.updatePos();
                     }
-    if (!mouse.pressed){
-        if (aPiece != null){
-            if (validSquare){
-                // MOVE CONFIRMED
-                copyPieces(simPieces, pieces);
-                aPiece.updatePos();
-                if (castlingPiece != null){
-                    castlingPiece.updatePos();
-                }
 
                     // If the move results in a promotion, handle promotion first (player must choose)
                     if (canPromote()){
@@ -266,7 +257,6 @@ public class GamePanel extends JPanel implements Runnable{
             }
         }
     }
-
     private void simulate(){
         canMove=false;
         validSquare=false;
