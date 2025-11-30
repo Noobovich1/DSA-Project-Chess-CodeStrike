@@ -8,13 +8,14 @@ public class Pawn extends piece {
     public Pawn(int color, int col, int row) {
         super(color, col, row);
         type = Type.PAWN;
-        
+
         if (color == GamePanel.WHITE){
             image = getImage("/pieceImage/wpawn");
         }else {
             image = getImage("/pieceImage/bpawn");
         }
     }
+
     public boolean canMove(int targetCol,int targetRow){
         if(isWithinboard(targetCol,targetRow) && isSameSquare(targetCol,targetRow)==false){
             int moveValue;
@@ -33,7 +34,7 @@ public class Pawn extends piece {
             }
             // 2 square movement
             if (targetCol == preCOL && targetRow == preROW + moveValue*2 && hittingP == null && moved == false 
-                && pieceOntheStraightline(targetCol, targetRow) == false){
+                && pieceIsOnStraightLine(targetCol, targetRow) == false){
                 return true;
             }
             // Capture
@@ -52,4 +53,5 @@ public class Pawn extends piece {
         }
         return false;
     }
+
 }
