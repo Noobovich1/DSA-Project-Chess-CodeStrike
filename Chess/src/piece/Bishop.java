@@ -16,11 +16,11 @@ public class Bishop extends piece {
             image = getImage("/pieceImage/bbishop");
         }
     }
-
-    public boolean canMove(int targetCol, int targetRow){
-        if(isWithinboard(targetCol, targetRow) && isSameSquare(targetCol, targetRow) == false){
-            if(Math.abs(targetCol - preCOL) == Math.abs(targetRow - preROW) && pieceIsOnDiagonalLine(targetCol, targetRow) == false){
-                if(isvalidSquare(targetCol, targetRow)){
+    @Override
+    public boolean canMove(int targetCol,int targetRow){
+        if(isWithinboard(targetCol,targetRow)&&!isSameSquare(targetCol,targetRow)){
+            if((Math.abs(targetCol-preCOL)==Math.abs(targetRow-preROW) )){
+                if((isvalidSquare(targetCol,targetRow))&&pieceOnDiagonalmovement(targetCol,targetRow)==false){
                     return true;
                 }
             }
