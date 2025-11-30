@@ -118,6 +118,27 @@ public class GamePanel extends JPanel implements Runnable{
         pieces.add(new Queen(BLACK, 3, 0));
         pieces.add(new King(BLACK, 4, 0));
     }
+    //testing(only)
+    //PRESS R TO RESET THE GAME
+    public void ResetGame(){
+        pieces.clear();
+        simPieces.clear();
+
+        // Reset game state
+        aPiece = null;
+        canMove = false;
+        validSquare = false;
+        CURRENT_COLOR = WHITE;
+
+        // Set up pieces again
+        setPieces();
+        copyPieces(pieces, simPieces);
+
+        // Request focus to ensure keyboard input continues to work
+        requestFocusInWindow();
+
+        System.out.println("Game Reset!");
+    }
 
     private void copyPieces(ArrayList<piece> source, ArrayList<piece> target){
         target.clear();
@@ -207,6 +228,15 @@ public class GamePanel extends JPanel implements Runnable{
                     if (castlingPiece != null){
                         castlingPiece.updatePos();
                     }
+    if (!mouse.pressed){
+        if (aPiece != null){
+            if (validSquare){
+                // MOVE CONFIRMED
+                copyPieces(simPieces, pieces);
+                aPiece.updatePos();
+                if (castlingPiece != null){
+                    castlingPiece.updatePos();
+                }
 
                     // If the move results in a promotion, handle promotion first (player must choose)
                     if (canPromote()){
