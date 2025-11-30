@@ -3,6 +3,7 @@ package piece;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import main.Type;
 
 import javax.imageio.ImageIO;
 import main.Board;
@@ -15,6 +16,8 @@ public class piece {
     public int col, row, preCOL, preROW;
     public int color;
     public piece hittingP;
+    public boolean moved, twoStepped;
+    public Type type;
 
     public piece(int color, int col, int row){
         this.color = color;
@@ -58,6 +61,13 @@ public class piece {
         y = getY(row);
         preCOL = getCol(x);
         preROW = getRow(y);
+        moved = true;
+        //checking if the pawn can move 2 steps forward
+        if(type == Type.PAWN){
+            if(Math.abs(y - getY(preROW)) == 2 && moved == false){
+                twoStepped = true;
+            }
+        }
     }
     public void resetPosition(){
         col=preCOL;
@@ -66,7 +76,7 @@ public class piece {
         y=getY(row);
     }
     public piece getHittingP(int targetCol,int targetRow){
-        for(piece piece: GamePanel.sPieces){
+        for(piece piece : GamePanel.simPieces){
             if(piece.col==targetCol && piece.row==targetRow && piece!=this){
                 return piece;
             }
@@ -85,10 +95,10 @@ public class piece {
         return false;
     }
     // CHECK THE SQUARE IS OCCUPIED OR NOT
-    public boolean  isvalidSquare(int targetCol,int targetRow){
+    public boolean isvalidSquare(int targetCol,int targetRow){  
         hittingP=getHittingP(targetCol,targetRow);
         if(hittingP==null){
-            return  true;
+            return true;
         }
         else{
             if(hittingP.color!=this.color){
@@ -100,10 +110,108 @@ public class piece {
         }
         return false;
     }
+    //CHECK IF THE TARGET SQUARE IS THE SAME AS THE CURRENT SQUARE
+    public boolean isSameSquare(int targetCol,int targetRow){
+        if(targetCol==preCOL && targetRow==preROW){
+            return true;
+        }
+        return false;
+    }
+    //make sure the path for the rook or queen is clear and they don't jump over pieces
+    public boolean pieceIsOnStraightLine(int targetCol, int targetRow){
+        //moving to the left
+        for(int c = preCOL-1; c>targetCol; c--){
+            for(piece piece : GamePanel.simPieces){
+                if(piece.col == c && piece.row == targetRow){
+                    hittingP = piece;
+                    return true;
+                }
+            }
+        }
+        //moving to the right
+        for(int c = preCOL+1; c<targetCol; c++){
+            for(piece piece : GamePanel.simPieces){
+                if(piece.col == c && piece.row == targetRow){
+                    hittingP = piece;
+                    return true;
+                }
+            }
+        }
+        //moving up
+        for(int r = preROW-1; r>targetRow; r--){
+            for(piece piece : GamePanel.simPieces){
+                if(piece.row == r && piece.col == targetCol){
+                    hittingP = piece;
+                    return true;
+                }
+            }
+        }
+        //moving down
+        for(int r = preROW+1; r<targetRow; r++){
+            for(piece piece : GamePanel.simPieces){
+                if(piece.row == r && piece.col == targetRow){
+                    hittingP = piece;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    //checking if the bishop or queen path is clear and make sure they don't jump over pieces
+    public boolean pieceIsOnDiagonalLine(int targetCol, int targetRow){
+        
+        if(targetRow < preROW){
+            // Up Left
+            for(int c = preCOL-1; c > targetCol; c--){
+                int diff = Math.abs(c - preCOL);
+                for(piece piece : GamePanel.simPieces){
+                    if(piece.col == c && piece.row == preROW - diff){
+                        hittingP = piece;
+                        return true;
+                    }
+                }
+            }
+            // Up Right
+            for(int c = preCOL+1; c < targetCol; c++){
+                int diff = Math.abs(c - preCOL);
+                for(piece piece : GamePanel.simPieces){
+                    if(piece.col == c && piece.row == preROW - diff){
+                        hittingP = piece;
+                        return true;
+                    }
+                }
+            }
+        }
+
+        if(targetRow > preROW){
+            // Down Left
+            for(int c = preCOL-1; c > targetCol; c--){
+                int diff = Math.abs(c - preCOL);
+                for(piece piece : GamePanel.simPieces){
+                    if(piece.col == c && piece.row == preROW + diff){
+                        hittingP = piece;
+                        return true;
+                    }
+                }
+            }
+            // Down Right
+            for(int c = preCOL+1; c < targetCol; c++){
+                int diff = Math.abs(c - preCOL);
+                for(piece piece : GamePanel.simPieces){
+                    if(piece.col == c && piece.row == preROW + diff){
+                        hittingP = piece;
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        return false;
+    }
     public int getIndexofpiece(){
-        for(int i=0;i<GamePanel.sPieces.size();i++){
-            if(GamePanel.sPieces.get(i)==this){
-                return i;
+        for(int i=0;i<GamePanel.simPieces.size();i++){
+            if(GamePanel.simPieces.get(i)==this){
+                return i; 
             }
         }
         return 0;
