@@ -4,10 +4,6 @@ import java.awt.*;
 import java.util.ArrayList;
 
 import javax.swing.JPanel;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import javax.imageio.ImageIO;
-import javax.swing.JPanel;
 
 import piece.Bishop;
 import piece.King;
@@ -24,6 +20,7 @@ public class GamePanel extends JPanel implements Runnable{
     Thread gameThread;
     Board board = new Board();
     Mouse mouse = new Mouse();
+    Keyboard keyboard=new Keyboard();
 
     //Color
     public static final int WHITE = 0;
@@ -37,41 +34,22 @@ public class GamePanel extends JPanel implements Runnable{
     piece aPiece, checkingPiece; //handle the piece that the player is holding
     public static piece castlingPiece;
     
-    //ArrayList for captured pieces
-    public static ArrayList<piece> capturedWhite = new ArrayList<>();
-    public static ArrayList<piece> capturedBlack = new ArrayList<>();
 
     //BOOLEAN
     boolean canMove;
-    boolean validSquare;
+    boolean vaildSquare;
     boolean promotion;
     boolean gameOver;
     boolean stalemate;
-
-    //Menu panel nha mấy bro
-    public static final int TITLE_STATE = 0;
-    public static final int PLAY_STATE = 1;
-    public static int gameState = TITLE_STATE;
-    BufferedImage background;
-    Rectangle playButton;
-    boolean mousePressedOverButton = false;
 
     public GamePanel(){
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setBackground(Color.black);
         addMouseMotionListener(mouse);
         addMouseListener(mouse);
-
-        //load background image
-        try {
-            background = ImageIO.read(getClass().getResourceAsStream("/backgroundImage/chess_background.png"));
-        } catch (IOException e){
-            e.printStackTrace();
-        }
-        //load nút play nha mấy bro
-        int buttonWidth = 200;
-        int buttonHeight = 80;
-        playButton = new Rectangle((WIDTH - buttonWidth) / 2, (HEIGHT - buttonHeight) / 2, buttonWidth, buttonHeight);
+        addKeyListener(keyboard);
+        requestFocusInWindow();
+        setFocusable(true);
 
         setPieces();
         copyPieces(pieces, simPieces);
@@ -127,7 +105,7 @@ public class GamePanel extends JPanel implements Runnable{
         // Reset game state
         aPiece = null;
         canMove = false;
-        validSquare = false;
+        vaildSquare = false;
         CURRENT_COLOR = WHITE;
 
         // Set up pieces again
@@ -168,69 +146,37 @@ public class GamePanel extends JPanel implements Runnable{
         }
     }
 
-    private void update(){
-    //Menu state update
-        if(gameState == TITLE_STATE) {
-            // Check if mouse is clicking the play button
-            if (mouse.pressed && playButton.contains(mouse.x, mouse.y)) {
-                mousePressedOverButton = true;
-            } else {
-                if (mousePressedOverButton) {
-                    gameState = PLAY_STATE;
-                    mousePressedOverButton = false;
-                }
-            }
-            return; // Stop here, don't run the game logic yet
-        }
-    //Play state update
+private void update(){
     // Mouse pressed
-        if (promotion == true){
+    if (promotion == true){
         promoting();
         return;
-        }
+    }
 
-        if (gameOver) return;
+    if (gameOver) return;
 
-        if (mouse.pressed){
-            if (aPiece == null){
-                // check if aPiece (active piece) is null or not
-                for (piece piece : simPieces){
+    if (mouse.pressed){
+        if (aPiece == null){
+            // check if aPiece (active piece) is null or not
+            for (piece piece : simPieces){
                 // if mouse is currently on an ally piece, allow mouse interaction with them as aPiece
-                    if (piece.color == CURRENT_COLOR &&
-                        piece.col == mouse.x / Board.SQUARE_SIZE &&
-                        piece.row == mouse.y / Board.SQUARE_SIZE){
-                        aPiece = piece;
-                        break;
-                    }
+                if (piece.color == CURRENT_COLOR &&
+                    piece.col == mouse.x / Board.SQUARE_SIZE &&
+                    piece.row == mouse.y / Board.SQUARE_SIZE){
+                    aPiece = piece;
+                    break;
                 }
-            } else {
+            }
+        } else {
             // if the player is holding a piece, simulate the move
             simulate();
-            }
         }
+    }
 
     // Mouse released
-        if (!mouse.pressed){
-            if (aPiece != null){
-                if (validSquare){
-                    // MOVE CONFIRMED
-                    copyPieces(simPieces, pieces);
-                    aPiece.updatePos();
-
-                    //check if a piece was captured during this confirmed move
-                    if(aPiece.hittingP != null){
-                        if(aPiece.hittingP.color == WHITE){
-                            capturedBlack.add(aPiece.hittingP);
-                        } else {
-                            capturedWhite.add(aPiece.hittingP);
-                        }
-                    }
-                    if (castlingPiece != null){
-                        castlingPiece.updatePos();
-                    }
     if (!mouse.pressed){
         if (aPiece != null){
-            if (validSquare){
+            if (vaildSquare){
                 // MOVE CONFIRMED
                 copyPieces(simPieces, pieces);
                 aPiece.updatePos();
@@ -238,38 +184,38 @@ public class GamePanel extends JPanel implements Runnable{
                     castlingPiece.updatePos();
                 }
 
-                    // If the move results in a promotion, handle promotion first (player must choose)
-                    if (canPromote()){
-                        promotion = true;
-                        // keep aPiece set so promoting() can replace it
-                        return;
-                    }
-
-                    // Switch to the opponent (they are now the side to move)
-                    changePlayer();
-
-                    // After switching, check if the side to move is in checkmate
-                    if (currentlyInCheck() && isCheckmate()){
-                        gameOver = true;
-                    }
-
-                    if (isStalemate() && !currentlyInCheck()){
-                        stalemate = true;
-                    }
-
-                } else {
-                    // invalid move: revert simulation
-                    copyPieces(pieces, simPieces);
-                    aPiece.resetPosition();
-                    aPiece = null; // reset to the original row and col
+                // If the move results in a promotion, handle promotion first (player must choose)
+                if (canPromote()){
+                    promotion = true;
+                    // keep aPiece set so promoting() can replace it
+                    return;
                 }
+
+                // Switch to the opponent (they are now the side to move)
+                changePlayer();
+
+                // After switching, check if the side to move is in checkmate
+                if (currentlyInCheck() && isCheckmate()){
+                    gameOver = true;
+                }
+
+                if (isStalemate() && !currentlyInCheck()){
+                    stalemate = true;
+                }
+
+            } else {
+                // invalid move: revert simulation
+                copyPieces(pieces, simPieces);
+                aPiece.resetPosition();
+                aPiece = null; // reset to the original row and col
             }
         }
     }
+}
 
     private void simulate(){
         canMove=false;
-        validSquare=false;
+        vaildSquare=false;
         copyPieces(pieces, simPieces);
         
         //fix the bug where if a player pick up a king and not castle, the rook would then be teleport to castled position despite no castle has been made 
@@ -291,7 +237,7 @@ public class GamePanel extends JPanel implements Runnable{
             checkCastling();
 
             if (!isIllegal(aPiece) && !currentlyInCheck()){
-                validSquare=true;
+                vaildSquare=true;
             }
         }
     }
@@ -570,125 +516,67 @@ public class GamePanel extends JPanel implements Runnable{
 
         Graphics2D g2 = (Graphics2D)g;
 
-        //Check state
-        if(gameState == TITLE_STATE){
-            drawMenu(g2);
-        } else {
-            //Chess board
-            board.draw(g2);
+        //Chess board
+        board.draw(g2);
 
-            //Chess pieces
-            for (piece p : simPieces) {
-                p.draw(g2);
-            }
+        //Chess pieces
+        for (piece p : simPieces) {
+            p.draw(g2);
+        }
 
-            if (aPiece != null){
-                if(canMove) {
-                    if (isIllegal(aPiece) || currentlyInCheck()){
-                        g2.setColor(Color.RED);
-                        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.7f));
-                        g2.fillRect(aPiece.col * Board.SQUARE_SIZE, aPiece.row * Board.SQUARE_SIZE, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
-                        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
-                    } else {
-                        g2.setColor(Color.BLUE);
-                        //change opacity for the target square
-                        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.7f));
-                        g2.fillRect(aPiece.col * Board.SQUARE_SIZE, aPiece.row * Board.SQUARE_SIZE, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
-                        // reset alpha otherwise other things will be half transparent too
-                        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
-                }
-                //Draw the aPiece in the end so it won't be hidden by the board or the colored square
-                aPiece.draw(g2);
-                }
+        if (aPiece != null){
+            if(canMove) {
+                if (isIllegal(aPiece) || currentlyInCheck()){
+                    g2.setColor(Color.RED);
+                    g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.7f));
+                    g2.fillRect(aPiece.col * Board.SQUARE_SIZE, aPiece.row * Board.SQUARE_SIZE, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
+                    g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+                } else {
+                    g2.setColor(Color.BLUE);
+                    //change opacity for the target square
+                    g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.7f));
+                    g2.fillRect(aPiece.col * Board.SQUARE_SIZE, aPiece.row * Board.SQUARE_SIZE, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
+                    // reset alpha otherwise other things will be half transparent too
+                    g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
             }
-            // status panel
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g2.setFont(new Font("Aptos", Font.PLAIN, 42));
-            g2.setColor(Color.white);
-            if (promotion){
-                g2.drawString("Promote to: ", 890, 250);
-                for (piece piece : promotePieces){
-                        g2.drawImage(piece.image, piece.getX(piece.col), piece.getY(piece.row), Board.SQUARE_SIZE, Board.SQUARE_SIZE, null);
-                }
+            //Draw the aPiece in the end so it won't be hidden by the board or the colored square
+            aPiece.draw(g2);
+            }
+        }
+        // status panel
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g2.setFont(new Font("Aptos", Font.PLAIN, 42));
+        g2.setColor(Color.white);
+        if (promotion){
+            g2.drawString("Promote to: ", 890, 250);
+            for (piece piece : promotePieces){
+                    g2.drawImage(piece.image, piece.getX(piece.col), piece.getY(piece.row), Board.SQUARE_SIZE, Board.SQUARE_SIZE, null);
+            }
+        } 
+        else if (!gameOver && !stalemate){
+            if (CURRENT_COLOR == WHITE){
+                g2.drawString("White's turn", 888, 600);
             } 
-            else if (!gameOver && !stalemate){
-                if (CURRENT_COLOR == WHITE){
-                    g2.drawString("White's turn", 888, 600);
-                } 
-                else {
-                    g2.drawString("Black's turn", 888, 200);
-                }
-                //this is for drawing captured pieces bruv
-                int x = 840;
-                int y = 620;
-                int scale = 45;
-                for(piece p : capturedWhite){
-                    g2.drawImage(p.image, x, y, scale, scale, null);
-                    x += 40;
-                    if(x > 1100) { x = 840; y += 40; }
-                    }
-                //aye twin, this is for white captured pieces
-                x = 840;
-                y = 100;
-                for(piece p : capturedBlack){
-                    g2.drawImage(p.image, x, y, scale, scale, null);
-                    x += 40;
-                    if(x > 1100) { x = 840; y += 40; }
-                }
-            }
-            if (gameOver){
-                String a = "";
-                if (CURRENT_COLOR == WHITE){
-                    a = "BLACK WINS";
-                }
-                else {
-                    a = "WHITE WINS";
-                }
-                g2.setFont(new Font("Arial", Font.PLAIN, 60));
-                g2.setColor(Color.yellow);
-                g2.drawString(a, 820, 420);
-            }
-            if (stalemate){
-                g2.setFont(new Font("Arial", Font.PLAIN, 60));
-                g2.setColor(Color.yellow);
-                g2.drawString("STALEMATE", 820, 420);
+            else {
+                g2.drawString("Black's turn", 888, 200);
             }
         }
-    }
-    // Menu drawing method
-    public void drawMenu(Graphics2D g2) {
-        // Draw Background 
-        if (background != null) {
-            g2.drawImage(background, 0, 0, WIDTH, HEIGHT, null);
-        } else {
-            // Fallback if image not found
-            g2.setColor(new Color(50, 50, 50));
-            g2.fillRect(0, 0, WIDTH, HEIGHT);
+        if (gameOver){
+            String a = "";
+            if (CURRENT_COLOR == WHITE){
+                a = "BLACK WINS";
+            }
+            else {
+                a = "WHITE WINS";
+            }
+            g2.setFont(new Font("Arial", Font.PLAIN, 60));
+            g2.setColor(Color.yellow);
+            g2.drawString(a, 820, 420);
         }
-
-        // Draw Title
-        g2.setFont(new Font("Monospaced", Font.BOLD, 90));
-        String title = "Chess Code Strike";
-        // Center the text
-        int textWidth = g2.getFontMetrics().stringWidth(title);
-        int x = WIDTH/2 - textWidth/2;
-        int y = HEIGHT/4;
-        
-        // Shadow effect
-        g2.setColor(Color.GREEN);
-        g2.drawString(title, x+3, y+3);
-        g2.setColor(Color.GREEN);
-        g2.drawString(title, x, y);
-
-        // Draw Play Button
-        g2.setFont(new Font("Monospaced", Font.BOLD, 40));
-        g2.setColor(mousePressedOverButton ? new Color(100, 255, 100) : new Color(255, 102, 255));
-        g2.fill(playButton);
-        
-        // Button Text
-        g2.setColor(Color.BLACK);
-        String btnText = "PLAY";
-        int btnTextWidth = g2.getFontMetrics().stringWidth(btnText);
-        g2.drawString(btnText, playButton.x + (playButton.width - btnTextWidth)/2, playButton.y + 45);
+        if (stalemate){
+            g2.setFont(new Font("Arial", Font.PLAIN, 60));
+            g2.setColor(Color.yellow);
+            g2.drawString("STALEMATE", 820, 420);
+        }
     }
 }
