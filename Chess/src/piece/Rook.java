@@ -11,7 +11,7 @@ public class Rook extends piece {
 
         if (color == GamePanel.WHITE) {
             image = getImage("/pieceImage/wrook");
-        }else {
+        } else {
             image = getImage("/pieceImage/brook");
         }
     }
