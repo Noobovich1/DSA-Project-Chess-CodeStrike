@@ -20,6 +20,7 @@ public class GamePanel extends JPanel implements Runnable{
     Thread gameThread;
     Board board = new Board();
     Mouse mouse = new Mouse();
+    Keyboard keyboard=new Keyboard();
 
     //Color
     public static final int WHITE = 0;
@@ -46,6 +47,9 @@ public class GamePanel extends JPanel implements Runnable{
         setBackground(Color.black);
         addMouseMotionListener(mouse);
         addMouseListener(mouse);
+        addKeyListener(keyboard);
+        requestFocusInWindow();
+        setFocusable(true);
 
         setPieces();
         copyPieces(pieces, simPieces);
@@ -91,6 +95,27 @@ public class GamePanel extends JPanel implements Runnable{
         pieces.add(new Bishop(BLACK, 5, 0));
         pieces.add(new Queen(BLACK, 3, 0));
         pieces.add(new King(BLACK, 4, 0));
+    }
+    //testing(only)
+    //PRESS R TO RESET THE GAME
+    public void ResetGame(){
+        pieces.clear();
+        simPieces.clear();
+
+        // Reset game state
+        aPiece = null;
+        canMove = false;
+        vaildSquare = false;
+        CURRENT_COLOR = WHITE;
+
+        // Set up pieces again
+        setPieces();
+        copyPieces(pieces, simPieces);
+
+        // Request focus to ensure keyboard input continues to work
+        requestFocusInWindow();
+
+        System.out.println("Game Reset!");
     }
 
     private void copyPieces(ArrayList<piece> source, ArrayList<piece> target){
@@ -142,7 +167,11 @@ private void update(){
                     break;
                 }
             }
+        } else {
+            // if the player is holding a piece, simulate the move
+            simulate();
         }
+    }
 
     // Mouse released
     if (!mouse.pressed){
@@ -182,6 +211,7 @@ private void update(){
             }
         }
     }
+}
 
     private void simulate(){
         canMove=false;
