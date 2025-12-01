@@ -148,80 +148,10 @@ public class GamePanel extends JPanel implements Runnable{
     }
 
     private void copyPieces(ArrayList<piece> source, ArrayList<piece> target){
-        // If target is empty, create initial copies once
-        if (target.isEmpty()) {
-            for (piece p : source) {
-                target.add(clonePieceShallow(p));
-            }
-            return;
+        target.clear();
+        for (int i = 0; i < source.size(); i++){
+            target.add(source.get(i));
         }
-
-        // Reuse existing target entries where possible
-        int i = 0;
-        for (; i < source.size() && i < target.size(); i++) {
-            piece src = source.get(i);
-            piece dst = target.get(i);
-
-            // If same concrete class, update fields in-place
-            if (dst.getClass() == src.getClass()) {
-                dst.color = src.color;
-                dst.type = src.type;
-                dst.col = src.col;
-                dst.row = src.row;
-                dst.preCOL = src.preCOL;
-                dst.preROW = src.preROW;
-                dst.x = src.getX(src.col);
-                dst.y = src.getY(src.row);
-                dst.moved = src.moved;
-                dst.twoStepped = src.twoStepped;
-                dst.hittingP = null; // clear temporary simulation flag
-                // copy any other primitive/boolean state your pieces use
-            } else {
-                // different class: replace with a fresh shallow clone
-                target.set(i, clonePieceShallow(src));
-            }
-        }
-
-        // If source has more items, append clones
-        for (; i < source.size(); i++) {
-            target.add(clonePieceShallow(source.get(i)));
-        }
-
-        // If target has extra items (shouldn't happen normally), trim
-        while (target.size() > source.size()) {
-            target.remove(target.size() - 1);
-        }
-    }
-
-    // helper: create a new instance of the same concrete type but only copy essential state
-    private piece clonePieceShallow(piece p) {
-        piece np;
-        if (p instanceof Pawn) {
-            np = new Pawn(p.color, p.col, p.row);
-        } else if (p instanceof Rook) {
-            np = new Rook(p.color, p.col, p.row);
-        } else if (p instanceof Knight) {
-            np = new Knight(p.color, p.col, p.row);
-        } else if (p instanceof Bishop) {
-            np = new Bishop(p.color, p.col, p.row);
-        } else if (p instanceof Queen) {
-            np = new Queen(p.color, p.col, p.row);
-        } else if (p instanceof King) {
-            np = new King(p.color, p.col, p.row);
-        } else {
-            np = p; // fallback (shouldn't happen)
-        }
-
-        if (np != p) {
-            np.moved = p.moved;
-            np.twoStepped = p.twoStepped;
-            np.preCOL = p.preCOL;
-            np.preROW = p.preROW;
-            np.x = np.getX(np.col);
-            np.y = np.getY(np.row);
-            np.hittingP = null;
-        }
-        return np;
     }
 
     @Override
@@ -743,20 +673,6 @@ public class GamePanel extends JPanel implements Runnable{
             }
 
             //Chess pieces
-            if (aPiece != null && !legalMoves.isEmpty()) {
-                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.75f));
-                g2.setColor(new Color(120, 120, 120, 200)); // grey with alpha via color
-                int circleSize = 24; // diameter of the circle
-                for (Point p : legalMoves) {
-                    int centerX = p.x * Board.SQUARE_SIZE + Board.HALF_SQUARE_SIZE;
-                    int centerY = p.y * Board.SQUARE_SIZE + Board.HALF_SQUARE_SIZE;
-                    int x = centerX - circleSize / 2;
-                    int y = centerY - circleSize / 2;
-                    g2.fillOval(x, y, circleSize, circleSize);
-                }
-                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
-            }
-            
             for (piece p : simPieces) {
                 p.draw(g2);
             }
@@ -780,6 +696,20 @@ public class GamePanel extends JPanel implements Runnable{
                 aPiece.draw(g2);
                 }
             }
+
+        if (aPiece != null && !legalMoves.isEmpty()) {
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.75f));
+            g2.setColor(new Color(120, 120, 120, 200)); // grey with alpha via color
+            int circleSize = 24; // diameter of the circle
+            for (Point p : legalMoves) {
+                int centerX = p.x * Board.SQUARE_SIZE + Board.HALF_SQUARE_SIZE;
+                int centerY = p.y * Board.SQUARE_SIZE + Board.HALF_SQUARE_SIZE;
+                int x = centerX - circleSize / 2;
+                int y = centerY - circleSize / 2;
+                g2.fillOval(x, y, circleSize, circleSize);
+            }
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+        }
             
             // status panel
             g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
