@@ -117,46 +117,29 @@ public class piece {
         }
         return false;
     }
-    //make sure the path for the rook or queen is clear and they don't jump over pieces
-    public boolean pieceIsOnStraightLine(int targetCol, int targetRow){
-        //moving to the left
-        for(int c = preCOL-1; c>targetCol; c--){
-            for(piece piece : GamePanel.simPieces){
-                if(piece.col == c && piece.row == targetRow){
-                    hittingP = piece;
+
+    public boolean pieceIsOnStraightLine(int targetCol, int targetRow) {
+        int stepCol = Integer.signum(targetCol - preCOL);
+        int stepRow = Integer.signum(targetRow - preROW);
+
+        int c = preCOL + stepCol;
+        int r = preROW + stepRow;
+
+        // Walk from the square next to the rook/queen up to (but not including) the target
+        while (c != targetCol || r != targetRow) {
+            for (piece p : GamePanel.simPieces) {
+                if (p.col == c && p.row == r) {
+                    hittingP = p; // found a blocker
                     return true;
                 }
             }
+            c += stepCol;
+            r += stepRow;
         }
-        //moving to the right
-        for(int c = preCOL+1; c<targetCol; c++){
-            for(piece piece : GamePanel.simPieces){
-                if(piece.col == c && piece.row == targetRow){
-                    hittingP = piece;
-                    return true;
-                }
-            }
-        }
-        //moving up
-        for(int r = preROW-1; r>targetRow; r--){
-            for(piece piece : GamePanel.simPieces){
-                if(piece.row == r && piece.col == targetCol){
-                    hittingP = piece;
-                    return true;
-                }
-            }
-        }
-        //moving down
-        for(int r = preROW+1; r<targetRow; r++){
-            for(piece piece : GamePanel.simPieces){
-                if(piece.row == r && piece.col == targetRow){
-                    hittingP = piece;
-                    return true;
-                }
-            }
-        }
-        return false;
+
+        return false; // path is clear
     }
+    
     //checking if the bishop or queen path is clear and make sure they don't jump over pieces
     public boolean pieceIsOnDiagonalLine(int targetCol, int targetRow){
         

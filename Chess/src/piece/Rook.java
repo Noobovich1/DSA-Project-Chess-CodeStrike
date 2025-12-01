@@ -16,14 +16,20 @@ public class Rook extends piece {
         }
     }
 
-    public boolean canMove(int targetCol, int targetRow){
-        if(isWithinboard(targetCol, targetRow) && isSameSquare(targetCol, targetRow) == false){
-            if(targetCol==preCOL || targetRow==preROW){
-                if(isvalidSquare(targetCol, targetRow) && pieceIsOnStraightLine(targetCol, targetRow) == false){
-                    return true;
-                }
+    @Override
+    public boolean canMove(int targetCol, int targetRow) {
+        if (!isWithinboard(targetCol, targetRow) || isSameSquare(targetCol, targetRow)) {
+            return false;
+        }
+
+        // Rook moves only in straight lines
+        if (targetCol == preCOL || targetRow == preROW) {
+            // Check if path is clear and destination is valid
+            if (!pieceIsOnStraightLine(targetCol, targetRow) && isvalidSquare(targetCol, targetRow)) {
+                return true;
             }
         }
+
         return false;
     }
 }

@@ -35,6 +35,7 @@ public class Pawn extends piece {
             // 2 square movement
             if (targetCol == preCOL && targetRow == preROW + moveValue*2 && hittingP == null && moved == false 
                 && pieceIsOnStraightLine(targetCol, targetRow) == false){
+                twoStepped = true;
                 return true;
             }
             // Capture

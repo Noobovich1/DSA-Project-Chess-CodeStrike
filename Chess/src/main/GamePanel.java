@@ -127,6 +127,8 @@ public class GamePanel extends JPanel implements Runnable{
     public void ResetGame(){
         pieces.clear();
         simPieces.clear();
+        capturedWhite.clear();
+        capturedBlack.clear();
 
         // Reset game state
         aPiece = null;
@@ -507,17 +509,17 @@ public class GamePanel extends JPanel implements Runnable{
         if (CURRENT_COLOR == WHITE){
             CURRENT_COLOR = BLACK;
             //reset twoStepped(ahead) status
-            for (piece piece: pieces){
-                if (piece.col == BLACK){
-                    piece.twoStepped = false;
+            for (piece p: pieces){
+                if (p.color == BLACK && p.type == Type.PAWN){
+                    p.twoStepped = false;
                 }
             }
 
         } else {
             CURRENT_COLOR = WHITE;
-            for (piece piece: pieces){
-                if (piece.col == WHITE){
-                    piece.twoStepped = false;
+            for (piece p: pieces){
+                if (p.color == WHITE && p.type == Type.PAWN){
+                    p.twoStepped = false;
                 }
             }
         }
@@ -610,7 +612,7 @@ public class GamePanel extends JPanel implements Runnable{
                     g2.drawString("White's turn", 888, 600);
                 } 
                 else {
-                    g2.drawString("Black's turn", 888, 200);
+                    g2.drawString("Black's turn", 888, 320);
                 }
                 //this is for drawing captured pieces bruv
                 int x = 840;
