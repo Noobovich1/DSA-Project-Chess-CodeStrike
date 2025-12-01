@@ -34,13 +34,14 @@ public class GamePanel extends JPanel implements Runnable{
     //ArrayList for pieces
     public static ArrayList<piece> pieces = new ArrayList<>(); //back up for such as undo move
     public static ArrayList<piece> simPieces = new ArrayList<>();
-    ArrayList<piece> promotePieces = new ArrayList<>();
-    piece aPiece, checkingPiece; //handle the piece that the player is holding
-    public static piece castlingPiece;
-    
-    //ArrayList for captured pieces
     public static ArrayList<piece> capturedWhite = new ArrayList<>();
     public static ArrayList<piece> capturedBlack = new ArrayList<>();
+    public static piece castlingPiece;
+    private ArrayList<Point> legalMoves = new ArrayList<>();
+    private boolean kingInCheck = false;
+    private piece checkedKing = null;
+    ArrayList<piece> promotePieces = new ArrayList<>();
+    piece aPiece, checkingPiece; //handle the piece that the player is holding
 
     //BOOLEAN
     boolean canMove;
@@ -244,6 +245,7 @@ public class GamePanel extends JPanel implements Runnable{
 
                     // Switch to the opponent (they are now the side to move)
                     changePlayer();
+                    updateCheckStatus();
 
                     // After switching, check if the side to move is in checkmate
                     if (currentlyInCheck() && isCheckmate()){
@@ -264,9 +266,11 @@ public class GamePanel extends JPanel implements Runnable{
         }
     }
     private void simulate(){
-        canMove=false;
-        validSquare=false;
         copyPieces(pieces, simPieces);
+        canMove=false;
+        computeLegalMoves();
+        validSquare=false;
+
         
         //fix the bug where if a player pick up a king and not castle, the rook would then be teleport to castled position despite no castle has been made 
         if (castlingPiece != null){
@@ -315,19 +319,31 @@ public class GamePanel extends JPanel implements Runnable{
         return false;
     }
 
-    private boolean isKingInCheck(){
-        piece king = getKing(true); // opponent's king (used for highlighting/checking)
-        if (king == null || aPiece == null) {
-            checkingPiece = null;
-            return false;
+    private boolean updateCheckStatus() {
+        // Ensure simPieces reflects the current board
+        copyPieces(pieces, simPieces);
+
+        // Find the king for the side to move
+        piece king = getKing(false); // false -> current player's king
+        checkedKing = null;
+        checkingPiece = null;
+        kingInCheck = false;
+
+        if (king == null) return false;
+
+        // Scan all opponent pieces to see if any can move to the king
+        for (piece p : simPieces) {
+            if (p.color != king.color) {
+                // Use p.canMove on the simulated board
+                if (p.canMove(king.col, king.row)) {
+                    kingInCheck = true;
+                    checkedKing = king;
+                    checkingPiece = p;
+                    return true;
+                }
+            }
         }
-        if (aPiece.canMove(king.col, king.row)){
-            checkingPiece = aPiece;
-            return true;
-        } else {
-            checkingPiece = null;
-            return false;
-        }
+        return false;
     }
 
     private piece getKing(boolean opponent){
@@ -526,6 +542,80 @@ public class GamePanel extends JPanel implements Runnable{
         aPiece = null;
     }
 
+    ///find piece for thing, avoiding mutating the actual piece list
+    private piece findSimPieceFor(piece original){
+        for (piece p : simPieces) {
+            if (p.type == original.type && p.color == original.color
+                && p.preCOL == original.preCOL && p.preROW == original.preROW) {
+                return p;
+            }
+        }
+        return null;
+    }
+
+
+
+    private void computeLegalMoves() {
+        legalMoves.clear();
+        if (aPiece == null) return;
+
+        // Ensure simPieces starts as a copy of the real board
+        copyPieces(pieces, simPieces);
+
+        // Find the sim-piece that corresponds to the currently picked piece
+        piece simPicked = findSimPieceFor(aPiece);
+        if (simPicked == null) return;
+
+        int origCol = simPicked.col;
+        int origRow = simPicked.row;
+
+        // Try every square on the board
+        for (int c = 0; c < 8; c++) {
+            for (int r = 0; r < 8; r++) {
+                // skip same square
+                if (c == origCol && r == origRow) continue;
+
+                // Reset simPieces to the real board for each trial
+                copyPieces(pieces, simPieces);
+                simPicked = findSimPieceFor(aPiece);
+                if (simPicked == null) continue;
+
+                // Quick check: does the piece think it can move there?
+                if (!simPicked.canMove(c, r)) continue;
+
+                // If this move captures a piece, remove that piece from simPieces
+                piece captured = simPicked.hittingP;
+                if (captured != null) {
+                    simPieces.remove(captured.getIndexofpiece());
+                }
+
+                // Temporarily move the simPicked piece
+                int oldCol = simPicked.col;
+                int oldRow = simPicked.row;
+                simPicked.col = c;
+                simPicked.row = r;
+
+                // If castling or special moves require extra handling, simulate them here
+                // (e.g., set castlingPiece positions if your code uses it)
+
+                // Now check king safety on the simulated board
+                boolean illegal = isIllegal(simPicked); // uses simPieces internally
+                boolean inCheck = currentlyInCheck();   // also uses simPieces
+
+                if (!illegal && !inCheck) {
+                    legalMoves.add(new Point(c, r));
+                }
+
+                // restore not strictly necessary because we copy simPieces each iteration
+                simPicked.col = oldCol;
+                simPicked.row = oldRow;
+            }
+        }
+
+        // restore simPieces to the real board
+        copyPieces(pieces, simPieces);
+    }
+
     public boolean canPromote(){
         if (aPiece.type == Type.PAWN){
             if (CURRENT_COLOR == WHITE && aPiece.row ==0 || CURRENT_COLOR == BLACK && aPiece.row == 7){
@@ -543,7 +633,7 @@ public class GamePanel extends JPanel implements Runnable{
     private void promoting(){
         if (mouse.pressed){
             for (piece piece : promotePieces){
-                if (piece.col == mouse.x/board.SQUARE_SIZE && piece.row == mouse.y/board.SQUARE_SIZE){
+                if (piece.col == mouse.x/Board.SQUARE_SIZE && piece.row == mouse.y/Board.SQUARE_SIZE){
                     switch (piece.type){
                         case ROOK: simPieces.add(new Rook(CURRENT_COLOR, aPiece.col, aPiece.row)); break;
                         case KNIGHT: simPieces.add(new Knight(CURRENT_COLOR, aPiece.col, aPiece.row)); break;
@@ -573,6 +663,15 @@ public class GamePanel extends JPanel implements Runnable{
             //Chess board
             board.draw(g2);
 
+            //checked king
+            if (kingInCheck && checkedKing != null) {
+                int kc = checkedKing.col;
+                int kr = checkedKing.row;
+                g2.setColor(new Color(255, 0, 0, 120)); // semi-transparent red
+                g2.fillRect(kc * Board.SQUARE_SIZE, kr * Board.SQUARE_SIZE, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
+                // reset composite if you changed it elsewhere
+            }
+
             //Chess pieces
             for (piece p : simPieces) {
                 p.draw(g2);
@@ -597,6 +696,21 @@ public class GamePanel extends JPanel implements Runnable{
                 aPiece.draw(g2);
                 }
             }
+
+        if (aPiece != null && !legalMoves.isEmpty()) {
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.75f));
+            g2.setColor(new Color(120, 120, 120, 200)); // grey with alpha via color
+            int circleSize = 24; // diameter of the circle
+            for (Point p : legalMoves) {
+                int centerX = p.x * Board.SQUARE_SIZE + Board.HALF_SQUARE_SIZE;
+                int centerY = p.y * Board.SQUARE_SIZE + Board.HALF_SQUARE_SIZE;
+                int x = centerX - circleSize / 2;
+                int y = centerY - circleSize / 2;
+                g2.fillOval(x, y, circleSize, circleSize);
+            }
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+        }
+            
             // status panel
             g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             g2.setFont(new Font("Aptos", Font.PLAIN, 42));
@@ -612,7 +726,7 @@ public class GamePanel extends JPanel implements Runnable{
                     g2.drawString("White's turn", 888, 600);
                 } 
                 else {
-                    g2.drawString("Black's turn", 888, 320);
+                    g2.drawString("Black's turn", 888, 290);
                 }
                 //this is for drawing captured pieces bruv
                 int x = 840;
