@@ -7,7 +7,6 @@ import javax.swing.JPanel;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import javax.imageio.ImageIO;
-import javax.swing.JPanel;
 
 import piece.Bishop;
 import piece.King;
@@ -226,10 +225,11 @@ public class GamePanel extends JPanel implements Runnable{
 
                     //check if a piece was captured during this confirmed move
                     if(aPiece.hittingP != null){
+                       
                         if(aPiece.hittingP.color == WHITE){
-                            capturedBlack.add(aPiece.hittingP);
-                        } else {
                             capturedWhite.add(aPiece.hittingP);
+                        } else {
+                            capturedBlack.add(aPiece.hittingP);
                         }
                     }
                     if (castlingPiece != null){
@@ -278,20 +278,25 @@ public class GamePanel extends JPanel implements Runnable{
             castlingPiece.x = castlingPiece.getX(castlingPiece.col);
             castlingPiece = null;
         }
+        
         //landing position for picked up piece simulation
         aPiece.x = mouse.x - Board.HALF_SQUARE_SIZE;
         aPiece.y = mouse.y - Board.HALF_SQUARE_SIZE;
         aPiece.col = aPiece.getCol(aPiece.x);
         aPiece.row = aPiece.getRow(aPiece.y);
-        if(aPiece.canMove(aPiece.col,aPiece.row)){
-            canMove=true;
-            if(aPiece.hittingP!=null){
-                simPieces.remove(aPiece.hittingP.getIndexofpiece());
-            }
-            checkCastling();
 
+        if(aPiece.canMove(aPiece.col, aPiece.row)){
+            canMove = true;
+    
+            // If canMove() found a piece to capture, remove it from simulation
+            if(aPiece.hittingP != null){
+                simPieces.remove(aPiece.hittingP.getIndexofpiece()); 
+            }
+    
+            checkCastling();
+    
             if (!isIllegal(aPiece) && !currentlyInCheck()){
-                validSquare=true;
+                validSquare = true;
             }
         }
     }
@@ -509,6 +514,15 @@ public class GamePanel extends JPanel implements Runnable{
         return isValidMove;
     }
 
+    private piece getPieceAt(int col, int row, ArrayList<piece> pieces) {
+        for (piece p : pieces) {
+            if (p.col == col && p.row == row) {
+                return p;
+            }
+        }
+        return null;
+    }
+
     public void checkCastling(){
         if (castlingPiece != null){
             if (castlingPiece.col == 0){
@@ -526,7 +540,7 @@ public class GamePanel extends JPanel implements Runnable{
             CURRENT_COLOR = BLACK;
             //reset twoStepped(ahead) status
             for (piece p: pieces){
-                if (p.color == BLACK && p.type == Type.PAWN){
+                if (p.color == WHITE && p.type == Type.PAWN){
                     p.twoStepped = false;
                 }
             }
@@ -534,7 +548,7 @@ public class GamePanel extends JPanel implements Runnable{
         } else {
             CURRENT_COLOR = WHITE;
             for (piece p: pieces){
-                if (p.color == WHITE && p.type == Type.PAWN){
+                if (p.color == BLACK && p.type == Type.PAWN){
                     p.twoStepped = false;
                 }
             }
@@ -552,8 +566,6 @@ public class GamePanel extends JPanel implements Runnable{
         }
         return null;
     }
-
-
 
     private void computeLegalMoves() {
         legalMoves.clear();

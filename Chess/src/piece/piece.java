@@ -57,18 +57,21 @@ public class piece {
     }
 
     public void updatePos(){
-        x = getX(col);
-        y = getY(row);
-        preCOL = getCol(x);
-        preROW = getRow(y);
-        moved = true;
-        //checking if the pawn can move 2 steps forward
-        if(type == Type.PAWN){
-            if(Math.abs(y - getY(preROW)) == 2 && moved == false){
+        // Check two-step BEFORE updating moved flag
+        if(type == Type.PAWN && !moved){
+            int rowDiff = Math.abs(row - preROW);  // Use row, not y coordinate
+            if(rowDiff == 2){
                 twoStepped = true;
             }
         }
+    
+        x = getX(col);
+        y = getY(row);
+        preCOL = col;  // Save current position
+        preROW = row;
+        moved = true;  // Now set moved flag
     }
+    
     public void resetPosition(){
         col=preCOL;
         row=preROW;
@@ -191,6 +194,7 @@ public class piece {
         
         return false;
     }
+
     public int getIndexofpiece(){
         for(int i=0;i<GamePanel.simPieces.size();i++){
             if(GamePanel.simPieces.get(i)==this){

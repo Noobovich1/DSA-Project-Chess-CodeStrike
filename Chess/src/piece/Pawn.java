@@ -16,43 +16,57 @@ public class Pawn extends piece {
         }
     }
 
-    public boolean canMove(int targetCol,int targetRow){
-        if(isWithinboard(targetCol,targetRow) && isSameSquare(targetCol,targetRow)==false){
-            int moveValue;
-            if(color==GamePanel.WHITE){
-                moveValue=-1;
-            }
-            //BLACK
-            else {
-                moveValue=1;
-            }
-            //check the hitting P
-            hittingP=getHittingP(targetCol,targetRow);
-            //1 square movement
-            if(targetCol==preCOL && targetRow==preROW+moveValue  && hittingP==null ){
+    @Override
+    public boolean canMove(int targetCol, int targetRow) {
+        if (!isWithinboard(targetCol, targetRow) || isSameSquare(targetCol, targetRow)) {
+            return false;
+        }
+
+        int moveValue = (color == GamePanel.WHITE) ? -1 : 1;
+
+        // Reset hittingP at the start
+        hittingP = null;
+
+        // 1-square forward move
+        if (targetCol == preCOL && targetRow == preROW + moveValue) {
+            if (getHittingP(targetCol, targetRow) == null) {
                 return true;
             }
-            // 2 square movement
-            if (targetCol == preCOL && targetRow == preROW + moveValue*2 && hittingP == null && moved == false 
-                && pieceIsOnStraightLine(targetCol, targetRow) == false){
-                twoStepped = true;
+        }
+
+        // 2-square forward move
+        
+        if (targetCol == preCOL && targetRow == preROW + moveValue * 2 && !moved) {
+            if (getHittingP(targetCol, targetRow) == null &&
+                pieceIsOnStraightLine(targetCol, targetRow) == false) {
                 return true;
             }
-            // Capture
-            if (Math.abs(targetCol-preCOL) == 1 && targetRow == preROW + moveValue && hittingP != null && hittingP.color != color){
+        }
+
+        // Diagonal moves (normal capture + en passant combined)
+       
+        if (Math.abs(targetCol - preCOL) == 1 && targetRow == preROW + moveValue) {
+            
+            // Normal capture - check target square first
+            piece target = getHittingP(targetCol, targetRow);
+            if (target != null && target.color != color) {
+                hittingP = target;
                 return true;
             }
-            //En Passant  (holy hell)
-            if (Math.abs(targetCol-preCOL) == 1 && targetRow == preROW + moveValue){
-                for (piece piece : GamePanel.simPieces){
-                    if (piece.col == targetCol && piece.row == preROW && piece.twoStepped == true){
-                        hittingP = piece;
-                        return true;
-                    }
+            
+            // En Passant - check square beside us
+            
+            for (piece p : GamePanel.simPieces) {
+                if (p.col == targetCol && 
+                    p.row == preROW && 
+                    p.twoStepped && 
+                    p.color != this.color) {  
+                    hittingP = p;
+                    return true;
                 }
             }
         }
+
         return false;
     }
-
 }
