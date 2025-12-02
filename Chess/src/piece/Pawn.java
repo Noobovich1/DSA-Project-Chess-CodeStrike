@@ -8,7 +8,10 @@ public class Pawn extends piece {
     public Pawn(int color, int col, int row) {
         super(color, col, row);
         type = Type.PAWN;
+        initImage(color);
+    }
 
+    private void initImage(int color) {
         if (color == GamePanel.WHITE){
             image = getImage("/pieceImage/wpawn");
         }else {

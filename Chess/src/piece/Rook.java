@@ -8,7 +8,10 @@ public class Rook extends piece {
     public Rook(int color, int col, int row) {
         super(color, col, row);
         type = Type.ROOK;
-        
+        initImage(color);
+    }
+    
+    private void initImage(int color) {
         if (color == GamePanel.WHITE){
             image = getImage("/pieceImage/wrook");
         }else {

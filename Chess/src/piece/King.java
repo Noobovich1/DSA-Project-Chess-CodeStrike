@@ -8,13 +8,18 @@ public class King extends piece {
     public King(int color, int col, int row) {
         super(color, col, row);
         type = Type.KING;
-        
+        initImage(color);
+    }
+
+    private void initImage(int color) {
         if (color == GamePanel.WHITE){
             image = getImage("/pieceImage/wking");
         }else {
             image = getImage("/pieceImage/bking");
         }
     }
+
+    @Override
     public boolean canMove(int targetCol,int targetRow){
         if(isWithinboard(targetCol,targetRow)){
             if(Math.abs(targetCol-preCOL)+Math.abs(targetRow-preROW)==1 ||

@@ -1,24 +1,22 @@
 package main;
 
 import java.awt.*;
-import java.util.ArrayList;
-
-import javax.swing.JPanel;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.ArrayList;
 import javax.imageio.ImageIO;
-
+import javax.swing.JPanel;
 import piece.Bishop;
 import piece.King;
 import piece.Knight;
 import piece.Pawn;
-import piece.piece;
 import piece.Queen;
 import piece.Rook;
+import piece.piece;
 
 public class GamePanel extends JPanel implements Runnable{
-    public static final int WIDTH = 1200;
-    public static final int HEIGHT = 800;
+    public static final int GAME_WIDTH = 1200;
+    public static final int GAME_HEIGHT = 800;
     final int FPS = 60;
     Thread gameThread;
     Board board = new Board();
@@ -58,7 +56,7 @@ public class GamePanel extends JPanel implements Runnable{
     boolean mousePressedOverButton = false;
 
     public GamePanel(){
-        setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        setPreferredSize(new Dimension(GAME_WIDTH, GAME_HEIGHT));
         setBackground(Color.black);
         addMouseMotionListener(mouse);
         addMouseListener(mouse);
@@ -70,12 +68,12 @@ public class GamePanel extends JPanel implements Runnable{
         try {
             background = ImageIO.read(getClass().getResourceAsStream("/backgroundImage/chess_background.png"));
         } catch (IOException e){
-            e.printStackTrace();
+            System.err.println("Failed to load background image: " + e.getMessage());
         }
         //load nút play nha mấy bro
         int buttonWidth = 200;
         int buttonHeight = 80;
-        playButton = new Rectangle((WIDTH - buttonWidth) / 2, (HEIGHT - buttonHeight) / 2, buttonWidth, buttonHeight);
+        playButton = new Rectangle((GAME_WIDTH - buttonWidth) / 2, (GAME_HEIGHT - buttonHeight) / 2, buttonWidth, buttonHeight);
 
         setPieces();
         copyPieces(pieces, simPieces);
@@ -86,7 +84,7 @@ public class GamePanel extends JPanel implements Runnable{
         gameThread.start(); //call the run method
     }
 
-    public void setPieces(){
+    public final void setPieces(){
         //White
         pieces.add(new Pawn(WHITE, 0, 6));
         pieces.add(new Pawn(WHITE, 1, 6));
@@ -482,16 +480,10 @@ public class GamePanel extends JPanel implements Runnable{
     
 
     private boolean kingLegalMovement(piece king){
-        if (isValidMove(king, -1, -1)) {return true;}
-        if (isValidMove(king, 0, -1)) {return true;}
-        if (isValidMove(king, -1, 0)) {return true;}
-        if (isValidMove(king, 0, 1)) {return true;}
-        if (isValidMove(king, 1, 0)) {return true;}
-        if (isValidMove(king, 1, -1)) {return true;}
-        if (isValidMove(king, -1, 1)) {return true;}
-        if (isValidMove(king, 1, 1)) {return true;}
-
-        return false;
+        return isValidMove(king, -1, -1) || isValidMove(king, 0, -1) || 
+               isValidMove(king, -1, 0) || isValidMove(king, 0, 1) || 
+               isValidMove(king, 1, 0) || isValidMove(king, 1, -1) || 
+               isValidMove(king, -1, 1) || isValidMove(king, 1, 1);
     }
 
     private boolean isValidMove(piece king, int colPlus, int rowPlus){
@@ -512,15 +504,6 @@ public class GamePanel extends JPanel implements Runnable{
         copyPieces(pieces, simPieces);
 
         return isValidMove;
-    }
-
-    private piece getPieceAt(int col, int row, ArrayList<piece> pieces) {
-        for (piece p : pieces) {
-            if (p.col == col && p.row == row) {
-                return p;
-            }
-        }
-        return null;
     }
 
     public void checkCastling(){
@@ -646,12 +629,12 @@ public class GamePanel extends JPanel implements Runnable{
         if (mouse.pressed){
             for (piece piece : promotePieces){
                 if (piece.col == mouse.x/Board.SQUARE_SIZE && piece.row == mouse.y/Board.SQUARE_SIZE){
-                    switch (piece.type){
-                        case ROOK: simPieces.add(new Rook(CURRENT_COLOR, aPiece.col, aPiece.row)); break;
-                        case KNIGHT: simPieces.add(new Knight(CURRENT_COLOR, aPiece.col, aPiece.row)); break;
-                        case BISHOP: simPieces.add(new Bishop(CURRENT_COLOR, aPiece.col, aPiece.row)); break;
-                        case QUEEN: simPieces.add(new Queen(CURRENT_COLOR, aPiece.col, aPiece.row)); break;
-                        default: break;
+                    switch (piece.type) {
+                        case ROOK -> simPieces.add(new Rook(CURRENT_COLOR, aPiece.col, aPiece.row));
+                        case KNIGHT -> simPieces.add(new Knight(CURRENT_COLOR, aPiece.col, aPiece.row));
+                        case BISHOP -> simPieces.add(new Bishop(CURRENT_COLOR, aPiece.col, aPiece.row));
+                        case QUEEN -> simPieces.add(new Queen(CURRENT_COLOR, aPiece.col, aPiece.row));
+                        default -> {}
                     }
                     simPieces.remove(aPiece.getIndexofpiece());
                     copyPieces(simPieces, pieces);
@@ -663,6 +646,7 @@ public class GamePanel extends JPanel implements Runnable{
         }
     }
 
+    @Override
     public void paintComponent(Graphics g){
         super.paintComponent(g);
 
@@ -759,7 +743,7 @@ public class GamePanel extends JPanel implements Runnable{
                 }
             }
             if (gameOver){
-                String a = "";
+                String a;
                 if (CURRENT_COLOR == WHITE){
                     a = "BLACK WINS";
                 }
@@ -781,11 +765,11 @@ public class GamePanel extends JPanel implements Runnable{
     public void drawMenu(Graphics2D g2) {
         // Draw Background 
         if (background != null) {
-            g2.drawImage(background, 0, 0, WIDTH, HEIGHT, null);
+            g2.drawImage(background, 0, 0, GAME_WIDTH, GAME_HEIGHT, null);
         } else {
             // Fallback if image not found
             g2.setColor(new Color(50, 50, 50));
-            g2.fillRect(0, 0, WIDTH, HEIGHT);
+            g2.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
         }
 
         // Draw Title
@@ -793,8 +777,8 @@ public class GamePanel extends JPanel implements Runnable{
         String title = "Chess Code Strike";
         // Center the text
         int textWidth = g2.getFontMetrics().stringWidth(title);
-        int x = WIDTH/2 - textWidth/2;
-        int y = HEIGHT/4;
+        int x = GAME_WIDTH/2 - textWidth/2;
+        int y = GAME_HEIGHT/4;
         
         // Shadow effect
         g2.setColor(Color.GREEN);

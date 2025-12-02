@@ -9,8 +9,8 @@ public class Keyboard extends KeyAdapter {
     public void keyPressed(KeyEvent e){
         int code=e.getKeyCode();
         if(code ==KeyEvent.VK_R){
-            if(e.getSource() instanceof GamePanel){
-                ((GamePanel)e.getSource()).ResetGame();
+            if (e.getSource() instanceof GamePanel gamePanel){
+                gamePanel.ResetGame();
             }
         }
     }

@@ -3,11 +3,10 @@ package piece;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import main.Type;
-
 import javax.imageio.ImageIO;
 import main.Board;
 import main.GamePanel;
+import main.Type;
 
 public class piece {
     
@@ -23,20 +22,21 @@ public class piece {
         this.color = color;
         this.row = row;
         this.col = col;
-        x = getX(col);
-        y = getY(row);
+
+        // avoid calling overridable methods from constructor
+        x = col * Board.SQUARE_SIZE;
+        y = row * Board.SQUARE_SIZE;
         preCOL = col;
         preROW = row;
     }
 
     public BufferedImage getImage(String imagePath){
-        BufferedImage image = null;
         try {
-            image = ImageIO.read(getClass().getResourceAsStream(imagePath+".png"));
-        }catch(IOException e) {
-            e.printStackTrace();
+            this.image = ImageIO.read(getClass().getResourceAsStream(imagePath+".png"));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load image: " + imagePath, e);
         }
-        return image;
+        return this.image;
     }
 
     public int getX(int col){
@@ -92,10 +92,7 @@ public class piece {
     }
     //CHECK IF IT IN THE BOARD
     public boolean isWithinboard(int targetCol,int targetRow){
-        if((targetCol>=0 && targetCol<=7)&&(targetRow>=0 && targetRow<=7) ){
-            return true;
-        }
-        return false;
+        return (targetCol >= 0 && targetCol <= 7) && (targetRow >= 0 && targetRow <= 7);
     }
     // CHECK THE SQUARE IS OCCUPIED OR NOT
     public boolean isvalidSquare(int targetCol,int targetRow){  
@@ -115,10 +112,7 @@ public class piece {
     }
     //CHECK IF THE TARGET SQUARE IS THE SAME AS THE CURRENT SQUARE
     public boolean isSameSquare(int targetCol,int targetRow){
-        if(targetCol==preCOL && targetRow==preROW){
-            return true;
-        }
-        return false;
+        return targetCol == preCOL && targetRow == preROW;
     }
 
     public boolean pieceIsOnStraightLine(int targetCol, int targetRow) {

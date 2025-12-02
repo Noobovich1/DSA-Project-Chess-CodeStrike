@@ -9,7 +9,10 @@ public class Bishop extends piece {
     public Bishop(int color, int col, int row) {
         super(color, col, row);
         type = Type.BISHOP;
-        
+        initImage(color);
+    }
+
+    private void initImage(int color) {
         if (color == GamePanel.WHITE){
             image = getImage("/pieceImage/wbishop");
         }else {
@@ -17,6 +20,7 @@ public class Bishop extends piece {
         }
     }
 
+    @Override
     public boolean canMove(int targetCol, int targetRow){
         if(isWithinboard(targetCol, targetRow) && isSameSquare(targetCol, targetRow) == false){
             if(Math.abs(targetCol - preCOL) == Math.abs(targetRow - preROW) && pieceIsOnDiagonalLine(targetCol, targetRow) == false){
