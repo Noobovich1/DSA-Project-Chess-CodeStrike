@@ -521,9 +521,9 @@ public class GamePanel extends JPanel implements Runnable{
 
         if (CURRENT_COLOR == WHITE){
             CURRENT_COLOR = BLACK;
-            //reset twoStepped(ahead) status
+            //reset twoStepped(ahead) status for the player moving
             for (piece p: pieces){
-                if (p.color == WHITE && p.type == Type.PAWN){
+                if (p.color == BLACK && p.type == Type.PAWN){
                     p.twoStepped = false;
                 }
             }
@@ -531,14 +531,14 @@ public class GamePanel extends JPanel implements Runnable{
         } else {
             CURRENT_COLOR = WHITE;
             for (piece p: pieces){
-                if (p.color == BLACK && p.type == Type.PAWN){
+                if (p.color == WHITE && p.type == Type.PAWN){
                     p.twoStepped = false;
                 }
             }
         }
+
         aPiece = null;
     }
-
     ///find piece for thing, avoiding mutating the actual piece list
     private piece findSimPieceFor(piece original){
         for (piece p : simPieces) {
@@ -678,13 +678,13 @@ public class GamePanel extends JPanel implements Runnable{
                     if (isIllegal(aPiece) || currentlyInCheck()){
                         g2.setColor(Color.RED);
                         g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.7f));
-                        g2.fillRect(aPiece.col * Board.SQUARE_SIZE, aPiece.row * Board.SQUARE_SIZE, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
+                        g2.fillRect(aPiece.col * Board.SQUARE_SIZE, aPiece.row * Board.SQUARE_SIZE, Board.SQUARE_SIZE+1, Board.SQUARE_SIZE);
                         g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
                     } else {
                         g2.setColor(Color.BLUE);
                         //change opacity for the target square
                         g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.7f));
-                        g2.fillRect(aPiece.col * Board.SQUARE_SIZE, aPiece.row * Board.SQUARE_SIZE, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
+                        g2.fillRect(aPiece.col * Board.SQUARE_SIZE, aPiece.row * Board.SQUARE_SIZE, Board.SQUARE_SIZE+1, Board.SQUARE_SIZE);
                         // reset alpha otherwise other things will be half transparent too
                         g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
                 }
