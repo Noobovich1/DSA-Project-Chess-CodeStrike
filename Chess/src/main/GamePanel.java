@@ -24,6 +24,8 @@ public class GamePanel extends JPanel implements Runnable {
     public static piece[][] board = new piece[8][8];
     public static ArrayList<piece> pieces = new ArrayList<>();
     private piece whiteKing, blackKing;
+    public static ArrayList<piece> capturedWhite = new ArrayList<>();
+    public static ArrayList<piece> capturedBlack = new ArrayList<>();
 
     public static piece activePiece = null;
     public static piece promoPiece = null; // <--- NEW: Stores the pawn during promotion
@@ -156,7 +158,11 @@ public class GamePanel extends JPanel implements Runnable {
         piece p = board[fromCol][fromRow];
         piece captured = board[toCol][toRow];
 
-        if (captured != null) pieces.remove(captured);
+        if (captured != null) {
+            pieces.remove(captured);
+            if(captured.color == WHITE) capturedWhite.add(captured);
+            if(captured.color == BLACK) capturedBlack.add(captured);
+        }
 
         // Reset En Passant flag for all pieces
         for (piece pc : pieces) {
@@ -313,7 +319,22 @@ public class GamePanel extends JPanel implements Runnable {
             new Bishop(CURRENT_COLOR,10,3).draw(g2);
             new Queen(CURRENT_COLOR,10,4).draw(g2);
         } else if (!gameOver && !stalemate) {
-            g2.drawString(CURRENT_COLOR == WHITE ? "White's turn" : "Black's turn", 850, 100);
+            g2.drawString(CURRENT_COLOR == WHITE ? "White's turn" : "Black's turn", 870, 95);
+            int x = 840;
+            int y = 640;
+            int scale = 45;
+            for(piece p : capturedBlack){
+                g2.drawImage(p.image, x, y, scale, scale, null);
+                x += 40;
+                if(x > 1100) {x = 840; y += 40;}
+            }
+            x = 840;
+            y = 100;
+            for(piece p : capturedWhite){
+                g2.drawImage(p.image, x, y, scale, scale, null);
+                x += 40;
+                if(x > 1100) {x = 840; y += 40;}
+            }
         }
         if (gameOver) {
             g2.setColor(Color.YELLOW);
