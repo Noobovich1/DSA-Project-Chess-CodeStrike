@@ -40,7 +40,7 @@ public class GamePanel extends JPanel implements Runnable {
     Rectangle playButton = new Rectangle(500, 360, 200, 80);
 
     public GamePanel() {
-        setPreferredSize(new Dimension(GAME_WIDTH, GAME_HEIGHT));
+        //setPreferredSize(new Dimension(GAME_WIDTH, GAME_HEIGHT));
         setBackground(Color.BLACK);
         addMouseMotionListener(mouse);
         addMouseListener(mouse);
@@ -119,6 +119,14 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     private void update() {
+        //calculate the scale for x and y
+        float scaleX = getWidth() / (float) GAME_WIDTH;
+        float scaleY = getHeight() / (float) GAME_HEIGHT;
+
+        //convert mouse screen coordinates to game logical coords
+        int mx = (int)(mouse.x / scaleX);
+        int my = (int)(mouse.y / scaleY);
+
         if (gameState == TITLE_STATE) {
             if (mouse.pressed && playButton.contains(mouse.x, mouse.y)) {
                 gameState = PLAY_STATE;
@@ -126,11 +134,11 @@ public class GamePanel extends JPanel implements Runnable {
             return;
         }
 
-        if (promotion) { promotionInput(); return; }
+        if (promotion) { promotionInput(mx, my); return; }
         if (gameOver || stalemate) return;
 
-        int col = mouse.x / Board.SQUARE_SIZE;
-        int row = mouse.y / Board.SQUARE_SIZE;
+        int col = mx / Board.SQUARE_SIZE;
+        int row = my / Board.SQUARE_SIZE;
 
         if (mouse.pressed) {
             if (activePiece == null) {
@@ -140,8 +148,8 @@ public class GamePanel extends JPanel implements Runnable {
                     legalMoves = p.getLegalMoves();
                 }
             } else {
-                activePiece.x = mouse.x - Board.HALF_SQUARE_SIZE;
-                activePiece.y = mouse.y - Board.HALF_SQUARE_SIZE;
+                activePiece.x = mx - Board.HALF_SQUARE_SIZE;
+                activePiece.y = my - Board.HALF_SQUARE_SIZE;
             }
         } else if (activePiece != null) {
             if (col < 8 && row < 8 && legalMoves.contains(new Point(col, row))) {
@@ -226,10 +234,10 @@ public class GamePanel extends JPanel implements Runnable {
         else if (noMoves) stalemate = true;
     }
 
-    private void promotionInput() {
+    private void promotionInput(int mx, int my) {
         if (!mouse.pressed) return;
-        int col = mouse.x / Board.SQUARE_SIZE;
-        int row = mouse.y / Board.SQUARE_SIZE;
+        int col = mx / Board.SQUARE_SIZE;
+        int row = my / Board.SQUARE_SIZE;
 
         // We use promoPiece now, NOT activePiece (which is null)
         piece newPiece = null;
@@ -270,6 +278,11 @@ public class GamePanel extends JPanel implements Runnable {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
 
+        //scale things to fit window
+        float scaleX = getWidth() / (float) GAME_WIDTH;
+        float scaleY = getHeight() / (float) GAME_HEIGHT;
+        g2.scale(scaleX, scaleY);
+
         if (gameState == TITLE_STATE) {
             if (background != null) g2.drawImage(background, 0, 0, GAME_WIDTH, GAME_HEIGHT, null);
             g2.setColor(Color.GREEN);
@@ -278,7 +291,11 @@ public class GamePanel extends JPanel implements Runnable {
             int w = g2.getFontMetrics().stringWidth(title);
             g2.drawString(title, GAME_WIDTH/2 - w/2, 200);
 
-            g2.setColor(mouse.pressed && playButton.contains(mouse.x, mouse.y) ? Color.CYAN : Color.MAGENTA);
+            // mouse coordination for resizing
+            int mx = (int)(mouse.x / scaleX);
+            int my = (int)(mouse.y / scaleY);
+
+            g2.setColor(mouse.pressed && playButton.contains(mx, my) ? Color.CYAN : Color.MAGENTA);
             g2.fill(playButton);
             g2.setColor(Color.BLACK);
             g2.setFont(new Font("Monospaced", Font.BOLD, 40));
