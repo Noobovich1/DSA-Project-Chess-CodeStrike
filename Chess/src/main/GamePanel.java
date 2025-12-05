@@ -39,6 +39,7 @@ public class GamePanel extends JPanel implements Runnable {
     BufferedImage background;
     Rectangle playButton = new Rectangle(500, 360, 200, 80);
 
+    private Sound sound=new Sound();
     public GamePanel() {
         //setPreferredSize(new Dimension(GAME_WIDTH, GAME_HEIGHT));
         setBackground(Color.BLACK);
@@ -58,6 +59,7 @@ public class GamePanel extends JPanel implements Runnable {
     public void launch() {
         gameThread = new Thread(this);
         gameThread.start();
+        gameSE();
     }
 
     public void ResetGame() {
@@ -170,7 +172,17 @@ public class GamePanel extends JPanel implements Runnable {
             pieces.remove(captured);
             if(captured.color == WHITE) capturedWhite.add(captured);
             if(captured.color == BLACK) capturedBlack.add(captured);
+
         }
+        //Sound effect for capture and Move
+        if(captured!=null){
+           capSE();
+
+        }
+        else{
+            moveSE();
+        }
+
 
         // Reset En Passant flag for all pieces
         for (piece pc : pieces) {
@@ -206,10 +218,10 @@ public class GamePanel extends JPanel implements Runnable {
         // Promotion Logic
         if (p instanceof Pawn && (toRow == 0 || toRow == 7)) {
             promotion = true;
+            promoSE();
             promoPiece = p; //Store the pawn so we can access it in promotionInput()
             return;         //Return early! Don't finish turn yet.
         }
-
         finishTurn();
     }
     
@@ -272,7 +284,26 @@ public class GamePanel extends JPanel implements Runnable {
             }
         }
     }
-
+    private void promoSE(){
+        sound.setFile(sound.PROMOTE);
+        sound.play();
+    }
+    private void moveSE(){
+        sound.setFile(sound.MOVE);
+        sound.play();
+    }
+    private void capSE(){
+        sound.setFile(sound.CAPTURE);
+        sound.play();
+    }
+    private void gameSE(){
+        sound.setFile(sound.GAME_END);
+        sound.play();
+    }
+    private void gameStart(){
+        sound.setFile(sound.GAME_START);
+        sound.play();
+    }
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
