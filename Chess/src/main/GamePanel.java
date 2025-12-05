@@ -65,6 +65,8 @@ public class GamePanel extends JPanel implements Runnable {
     public void ResetGame() {
         setupNewGame();
         gameState = TITLE_STATE;
+        capturedBlack.clear();
+        capturedWhite.clear();
         repaint();
     }
 
