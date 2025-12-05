@@ -1,71 +1,53 @@
+// src/piece/Pawn.java
 package piece;
 
-import main.GamePanel;
-import main.Type;
+import main.*;
 
 public class Pawn extends piece {
-
     public Pawn(int color, int col, int row) {
         super(color, col, row);
         type = Type.PAWN;
-        initImage(color);
-    }
-
-    private void initImage(int color) {
-        if (color == GamePanel.WHITE){
-            image = getImage("/pieceImage/wpawn");
-        }else {
-            image = getImage("/pieceImage/bpawn");
-        }
+        image = getImage(color == GamePanel.WHITE ? "/pieceImage/wpawn" : "/pieceImage/bpawn");
     }
 
     @Override
     public boolean canMove(int targetCol, int targetRow) {
-        if (!isWithinboard(targetCol, targetRow) || isSameSquare(targetCol, targetRow)) {
-            return false;
-        }
+        if (!isWithinBoard(targetCol, targetRow)) return false;
 
-        int moveValue = (color == GamePanel.WHITE) ? -1 : 1;
-
-        // Reset hittingP at the start
-        hittingP = null;
-
-        // 1-square forward move
-        if (targetCol == preCOL && targetRow == preROW + moveValue) {
-            if (getHittingP(targetCol, targetRow) == null) {
-                return true;
-            }
-        }
-
-        // 2-square forward move
+        int direction = color == GamePanel.WHITE ? -1 : 1;
         
-        if (targetCol == preCOL && targetRow == preROW + moveValue * 2 && !moved) {
-            if (getHittingP(targetCol, targetRow) == null &&
-                pieceIsOnStraightLine(targetCol, targetRow) == false) {
-                return true;
-            }
+        // 1. Standard Move (1 square forward)
+        if (targetCol == col && targetRow == row + direction && GamePanel.board[targetCol][targetRow] == null) {
+            return true;
         }
 
-        // Diagonal moves (normal capture + en passant combined)
-       
-        if (Math.abs(targetCol - preCOL) == 1 && targetRow == preROW + moveValue) {
+        // 2. Double Move (2 squares forward from start)
+        if (!moved && targetCol == col && targetRow == row + 2*direction 
+            && GamePanel.board[col][row + direction] == null 
+            && GamePanel.board[targetCol][targetRow] == null) {
+            return true;
+        }
+
+        // 3. Diagonal Capture & En Passant
+        if (Math.abs(targetCol - col) == 1 && targetRow == row + direction) {
+            piece target = GamePanel.board[targetCol][targetRow];
             
-            // Normal capture - check target square first
-            piece target = getHittingP(targetCol, targetRow);
+            // Normal diagonal capture
             if (target != null && target.color != color) {
-                hittingP = target;
                 return true;
             }
-            
-            // En Passant - check square beside us
-            
-            for (piece p : GamePanel.simPieces) {
-                if (p.col == targetCol && 
-                    p.row == preROW && 
-                    p.twoStepped && 
-                    p.color != this.color) {  
-                    hittingP = p;
-                    return true;
+
+            // En Passant Logic
+            // The square we move TO is empty...
+            if (target == null) {
+                // ...but there is an enemy pawn adjacent to us (at targetCol, but on our same row)
+                piece passingPawn = GamePanel.board[targetCol][row];
+                
+                if (passingPawn != null && passingPawn instanceof Pawn && passingPawn.color != color) {
+                    // And that pawn just moved 2 steps in the previous turn
+                    if (passingPawn.twoStepped) {
+                        return true;
+                    }
                 }
             }
         }

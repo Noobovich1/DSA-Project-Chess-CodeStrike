@@ -1,63 +1,42 @@
 package piece;
 
-import main.GamePanel;
-import main.Type;
+import main.*;
 
 public class King extends piece {
-
     public King(int color, int col, int row) {
         super(color, col, row);
         type = Type.KING;
-        initImage(color);
-    }
-
-    private void initImage(int color) {
-        if (color == GamePanel.WHITE){
-            image = getImage("/pieceImage/wking");
-        }else {
-            image = getImage("/pieceImage/bking");
-        }
+        image = getImage(color == GamePanel.WHITE ? "/pieceImage/wking" : "/pieceImage/bking");
     }
 
     @Override
-    public boolean canMove(int targetCol,int targetRow){
-        if(isWithinboard(targetCol,targetRow)){
-            if(Math.abs(targetCol-preCOL)+Math.abs(targetRow-preROW)==1 ||
-                    Math.abs((targetCol-preCOL)*(targetRow-preROW))==1){
-                if(isvalidSquare(targetCol,targetRow)) {
+    public boolean canMove(int targetCol, int targetRow) {
+        if (!isWithinBoard(targetCol, targetRow) || isSameSquare(targetCol, targetRow)) return false;
+
+        int dc = Math.abs(targetCol - col);
+        int dr = Math.abs(targetRow - row);
+
+        // Normal king move
+        if (dc <= 1 && dr <= 1) {
+            return isValidSquare(targetCol, targetRow);
+        }
+
+        // Castling
+        if (!moved && targetRow == row && (targetCol == 2 || targetCol == 6)) {
+            int rookCol = targetCol == 6 ? 7 : 0;
+            piece rook = GamePanel.board[rookCol][row];
+            if (rook instanceof Rook && !rook.moved) {
+                // Check path is clear
+                int step = targetCol > col ? 1 : -1;
+                for (int c = col + step; c != targetCol; c += step) {
+                    if (GamePanel.board[c][row] != null) return false;
+                }
+                if (GamePanel.board[targetCol][row] == null) {
                     return true;
                 }
             }
         }
-        //check castling
-        if (moved == false){
-            //short castling O-O
-            if (targetCol == preCOL + 2 && targetRow == preROW && pieceIsOnStraightLine(targetCol, targetRow) == false){
-                //we scan the piece 3 square to the right side of the starting king position (the rook) to check if it moved or not
-                for (piece piece : GamePanel.simPieces){
-                    if (piece.col == preCOL + 3 && piece.row == preROW && piece.moved == false){
-                        GamePanel.castlingPiece = piece;
-                        return true;
-                    }
-                }
-            }
-            //long castling O-O-O
-            if (targetCol == preCOL - 2 && targetRow == preROW && pieceIsOnStraightLine(targetCol, targetRow) == false){
-                piece p[] = new piece[2];
-                for (piece piece : GamePanel.simPieces){
-                    if (piece.col == preCOL - 3 && piece.row == targetRow){
-                        p[0] = piece;
-                    }
-                    if (piece.col == preCOL - 4 && piece.row == targetRow){
-                        p[1] = piece;
-                    }
-                    if (p[0] == null && p[1] != null && p[1].moved == false){
-                        GamePanel.castlingPiece = p[1];
-                        return true;
-                    }
-                }
-            }
-        }
+
         return false;
     }
 }

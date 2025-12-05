@@ -1,36 +1,20 @@
 package piece;
 
-import main.GamePanel;
-import main.Type;
+import main.*;
 
 public class Rook extends piece {
-
     public Rook(int color, int col, int row) {
         super(color, col, row);
         type = Type.ROOK;
-        initImage(color);
-    }
-    
-    private void initImage(int color) {
-        if (color == GamePanel.WHITE){
-            image = getImage("/pieceImage/wrook");
-        }else {
-            image = getImage("/pieceImage/brook");
-        }
+        image = getImage(color == GamePanel.WHITE ? "/pieceImage/wrook" : "/pieceImage/brook");
     }
 
     @Override
     public boolean canMove(int targetCol, int targetRow) {
-        if (!isWithinboard(targetCol, targetRow) || isSameSquare(targetCol, targetRow)) {
-            return false;
-        }
+        if (!isWithinBoard(targetCol, targetRow) || isSameSquare(targetCol, targetRow)) return false;
 
-        // Rook moves only in straight lines
-        if (targetCol == preCOL || targetRow == preROW) {
-            // Check if path is clear and destination is valid
-            if (!pieceIsOnStraightLine(targetCol, targetRow) && isvalidSquare(targetCol, targetRow)) {
-                return true;
-            }
+        if (targetCol == col || targetRow == row) {
+            return isPathClearStraight(targetCol, targetRow) && isValidSquare(targetCol, targetRow);
         }
 
         return false;
