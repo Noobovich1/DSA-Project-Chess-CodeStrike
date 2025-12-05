@@ -1,3 +1,4 @@
+// src/main/GamePanel.java
 package main;
 
 import piece.*;
@@ -25,6 +26,8 @@ public class GamePanel extends JPanel implements Runnable {
     private piece whiteKing, blackKing;
 
     public static piece activePiece = null;
+    public static piece promoPiece = null; // <--- NEW: Stores the pawn during promotion
+    
     private ArrayList<Point> legalMoves = new ArrayList<>();
     private boolean promotion = false;
     public boolean gameOver = false, stalemate = false;
@@ -59,7 +62,6 @@ public class GamePanel extends JPanel implements Runnable {
         setupNewGame();
         gameState = TITLE_STATE;
         repaint();
-        System.out.println("Game Reset! Press PLAY or R again to start.");
     }
 
     public void setupNewGame() {
@@ -68,6 +70,7 @@ public class GamePanel extends JPanel implements Runnable {
         gameOver = stalemate = promotion = false;
         CURRENT_COLOR = WHITE;
         activePiece = null;
+        promoPiece = null;
 
         // White
         addPiece(new Rook(WHITE, 0,7)); addPiece(new Knight(WHITE, 1,7));
@@ -97,7 +100,7 @@ public class GamePanel extends JPanel implements Runnable {
 
     @Override
     public void run() {
-        double interval = 1000000000 / FPS;
+        double interval = 1_000_000_000.0 / FPS;
         double delta = 0;
         long last = System.nanoTime();
 
@@ -155,7 +158,7 @@ public class GamePanel extends JPanel implements Runnable {
 
         if (captured != null) pieces.remove(captured);
 
-        // reset two stepped (ahead) status
+        // Reset En Passant flag for all pieces
         for (piece pc : pieces) {
             pc.twoStepped = false;
         }
@@ -163,9 +166,7 @@ public class GamePanel extends JPanel implements Runnable {
         board[fromCol][fromRow] = null;
         board[toCol][toRow] = p;
         p.col = toCol; p.row = toRow;
-        
-        // p.updatePos() will set p.twoStepped = true if this specific move was a double jump
-        p.updatePos(); 
+        p.updatePos();
 
         // Castling
         if (p instanceof King && Math.abs(toCol - fromCol) == 2) {
@@ -178,15 +179,9 @@ public class GamePanel extends JPanel implements Runnable {
             rook.updatePos();
         }
 
-        // en pessant
+        // En Passant
         if (p instanceof Pawn && captured == null && toCol != fromCol) {
-            int epRow = p.color == WHITE ? 3 : 4; 
-            // The pawn being captured is on the row we *came from* (strictly speaking),
-            // or we can just calculate based on the destination.
-            // If white moved to row 2, the enemy was at row 3.
-            // If black moved to row 5, the enemy was at row 4.
             int captureRow = p.color == WHITE ? toRow + 1 : toRow - 1;
-            
             captured = board[toCol][captureRow];
             if (captured != null) {
                 board[toCol][captureRow] = null;
@@ -194,22 +189,23 @@ public class GamePanel extends JPanel implements Runnable {
             }
         }
 
-        // Promotion
+        // Promotion Logic
         if (p instanceof Pawn && (toRow == 0 || toRow == 7)) {
             promotion = true;
-            return;
+            promoPiece = p; //Store the pawn so we can access it in promotionInput()
+            return;         //Return early! Don't finish turn yet.
         }
 
+        finishTurn();
+    }
+    
+    private void finishTurn() {
         CURRENT_COLOR = 1 - CURRENT_COLOR;
         updateKingCache();
-        
-        //checkmate logic
-        piece king;
-        if (CURRENT_COLOR == WHITE) {
-            king = whiteKing;
-        } else {
-            king = blackKing;
-        }
+
+        piece king = null;
+        if (CURRENT_COLOR == WHITE) king = whiteKing;
+        else king = blackKing;
 
         boolean inCheck = king != null && king.isAttacked();
         boolean noMoves = true;
@@ -229,19 +225,22 @@ public class GamePanel extends JPanel implements Runnable {
         int col = mouse.x / Board.SQUARE_SIZE;
         int row = mouse.y / Board.SQUARE_SIZE;
 
+        // We use promoPiece now, NOT activePiece (which is null)
         piece newPiece = null;
-        if (col == 9 && row == 3) newPiece = new Knight(CURRENT_COLOR, activePiece.col, activePiece.row);
-        else if (col == 9 && row == 4) newPiece = new Rook(CURRENT_COLOR, activePiece.col, activePiece.row);
-        else if (col == 10 && row == 3) newPiece = new Bishop(CURRENT_COLOR, activePiece.col, activePiece.row);
-        else if (col == 10 && row == 4) newPiece = new Queen(CURRENT_COLOR, activePiece.col, activePiece.row);
+        if (col == 9 && row == 3) newPiece = new Knight(CURRENT_COLOR, promoPiece.col, promoPiece.row);
+        else if (col == 9 && row == 4) newPiece = new Rook(CURRENT_COLOR, promoPiece.col, promoPiece.row);
+        else if (col == 10 && row == 3) newPiece = new Bishop(CURRENT_COLOR, promoPiece.col, promoPiece.row);
+        else if (col == 10 && row == 4) newPiece = new Queen(CURRENT_COLOR, promoPiece.col, promoPiece.row);
 
         if (newPiece != null) {
-            pieces.remove(activePiece);
-            board[activePiece.col][activePiece.row] = newPiece;
+            pieces.remove(promoPiece);
+            board[promoPiece.col][promoPiece.row] = newPiece;
             pieces.add(newPiece);
+            
             promotion = false;
-            CURRENT_COLOR = 1 - CURRENT_COLOR;
-            updateKingCache();
+            promoPiece = null;
+            
+            finishTurn(); // <--- Now we check for checkmate caused by the new Queen
         }
     }
 
@@ -283,13 +282,9 @@ public class GamePanel extends JPanel implements Runnable {
 
         boardDrawer.draw(g2);
 
-        //REPLACED TERNARY WITH IF/ELSE AND DO NOT TOUCH THIS I SPENT HALF A WEEK FIXING THIS ALREADY AI SUCKS
-        piece currentKing;
-        if (CURRENT_COLOR == WHITE) {
-            currentKing = whiteKing;
-        } else {
-            currentKing = blackKing;
-        }
+        piece currentKing = null;
+        if (CURRENT_COLOR == WHITE) currentKing = whiteKing;
+        else currentKing = blackKing;
         
         if (currentKing != null && currentKing.isAttacked()) {
             g2.setColor(new Color(255, 0, 0, 100));
@@ -322,8 +317,8 @@ public class GamePanel extends JPanel implements Runnable {
         }
         if (gameOver) {
             g2.setColor(Color.YELLOW);
-            g2.setFont(new Font("Arial", Font.BOLD, 58));
-            g2.drawString(CURRENT_COLOR == WHITE ? "BLACK WINS" : "WHITE WINS", 815, 420);
+            g2.setFont(new Font("Arial", Font.BOLD, 80));
+            g2.drawString(CURRENT_COLOR == WHITE ? "BLACK WINS" : "WHITE WINS", 700, 420);
         }
         if (stalemate) {
             g2.setColor(Color.YELLOW);
