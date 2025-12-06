@@ -22,6 +22,7 @@ public class GamePanel extends JPanel implements Runnable {
     public static final int WHITE = 0, BLACK = 1;
     public int CURRENT_COLOR = WHITE;
 
+    // --- GAME DATA ---
     public static piece[][] board = new piece[8][8];
     public static ArrayList<piece> pieces = new ArrayList<>();
     private piece whiteKing, blackKing;
@@ -29,27 +30,48 @@ public class GamePanel extends JPanel implements Runnable {
     public static ArrayList<piece> capturedBlack = new ArrayList<>();
 
     public static piece activePiece = null;
-    public static piece promoPiece = null; // <--- NEW: Stores the pawn during promotion
+    public static piece promoPiece = null;
     
     private ArrayList<Point> legalMoves = new ArrayList<>();
     private boolean promotion = false;
     public boolean gameOver = false, stalemate = false;
 
-    public static final int TITLE_STATE = 0, PLAY_STATE = 1;
+    // --- STATES ---
+    public static final int TITLE_STATE = 0;
+    public static final int PLAY_STATE = 1;
+    public static final int AI_SELECTOR_STATE = 2; 
     public int gameState = TITLE_STATE;
+
+    // --- ASSETS ---
     BufferedImage background;
-    Rectangle playButton = new Rectangle(500, 360, 200, 80);
+    BufferedImage imgChiBao, imgGia, imgTung; 
+    
+    // --- UI RECTANGLES ---
+    Rectangle btnPvP = new Rectangle(400, 360, 400, 80);
+    Rectangle btnPvE = new Rectangle(400, 460, 400, 80);
+    
+    Rectangle btnBot1 = new Rectangle(150, 200, 250, 300); // Chi Bao
+    Rectangle btnBot2 = new Rectangle(475, 200, 250, 300); // Gia
+    Rectangle btnBot3 = new Rectangle(800, 200, 250, 300); // Tung
+    Rectangle btnColorWhite = new Rectangle(400, 550, 150, 60);
+    Rectangle btnColorBlack = new Rectangle(650, 550, 150, 60);
+    Rectangle btnStartGame = new Rectangle(450, 650, 300, 80);
+    Rectangle btnBack = new Rectangle(50, 50, 100, 50);
 
-    private Sound sound=new Sound();
+    private Sound sound = new Sound();
 
-    // AI Fields
+    // --- AI CONFIGURATION ---
     public ChessAI ai;
-    public boolean playAgainstAI = true; //False for 2 player mode
+    public boolean playAgainstAI = false;
     private boolean aiThinking = false;
+    private volatile int gameId = 0;
 
+    private int selectedBotDepth = 3;
+    private String selectedBotName = "Gia";
+    private BufferedImage selectedBotImage;
+    private int playerChosenColor = WHITE;
 
     public GamePanel() {
-        //setPreferredSize(new Dimension(GAME_WIDTH, GAME_HEIGHT));
         setBackground(Color.BLACK);
         addMouseMotionListener(mouse);
         addMouseListener(mouse);
@@ -57,48 +79,57 @@ public class GamePanel extends JPanel implements Runnable {
         setFocusable(true);
         requestFocusInWindow();
 
+        loadImages();
+        
+        ai = new ChessAI(this);
+        selectedBotImage = imgGia; 
+    }
+
+    private void loadImages() {
         try {
             background = ImageIO.read(getClass().getResourceAsStream("/backgroundImage/chess_background.png"));
-        } catch (IOException ignored) {}
-
-        setupNewGame();
-
-        // Initialize AI
-        ai = new ChessAI(this);
-        ai.setDepth(3); // 3 = medium difficulty, 4 = hard
+            // Ensure these images exist, otherwise they will be null (handled in draw)
+            try { imgChiBao = ImageIO.read(getClass().getResourceAsStream("/botImage/chibao.png")); } catch(Exception e){}
+            try { imgGia = ImageIO.read(getClass().getResourceAsStream("/botImage/gia.png")); } catch(Exception e){}
+            try { imgTung = ImageIO.read(getClass().getResourceAsStream("/botImage/tungai.png")); } catch(Exception e){}
+        } catch (Exception e) {
+            System.out.println("Background loading failed: " + e.getMessage());
+        }
     }
 
     public void launch() {
         gameThread = new Thread(this);
         gameThread.start();
-        gameSE();
+        gameSE(); 
     }
 
     public void ResetGame() {
-        setupNewGame();
         gameState = TITLE_STATE;
-        capturedBlack.clear();
-        capturedWhite.clear();
-        aiThinking = false;
+        activePiece = null;
+        promoPiece = null;
         repaint();
     }
 
-    public void setupNewGame() {
+    public void startGame() {
+        gameId++; 
         board = new piece[8][8];
         pieces.clear();
+        capturedBlack.clear();
+        capturedWhite.clear();
         gameOver = stalemate = promotion = false;
         CURRENT_COLOR = WHITE;
         activePiece = null;
         promoPiece = null;
+        aiThinking = false;
 
-        // White
+        // White pieces
         addPiece(new Rook(WHITE, 0,7)); addPiece(new Knight(WHITE, 1,7));
         addPiece(new Bishop(WHITE, 2,7)); addPiece(new Queen(WHITE, 3,7));
         addPiece(new King(WHITE, 4,7)); addPiece(new Bishop(WHITE, 5,7));
         addPiece(new Knight(WHITE, 6,7)); addPiece(new Rook(WHITE, 7,7));
         for (int i = 0; i < 8; i++) addPiece(new Pawn(WHITE, i, 6));
 
-        // Black
+        // Black pieces
         addPiece(new Rook(BLACK, 0,0)); addPiece(new Knight(BLACK, 1,0));
         addPiece(new Bishop(BLACK, 2,0)); addPiece(new Queen(BLACK, 3,0));
         addPiece(new King(BLACK, 4,0)); addPiece(new Bishop(BLACK, 5,0));
@@ -106,6 +137,13 @@ public class GamePanel extends JPanel implements Runnable {
         for (int i = 0; i < 8; i++) addPiece(new Pawn(BLACK, i, 1));
 
         updateKingCache();
+        
+        if (playAgainstAI) {
+            ai.setDepth(selectedBotDepth);
+            if (playerChosenColor == BLACK) {
+                aiTurn();
+            }
+        }
     }
 
     private void addPiece(piece p) {
@@ -136,17 +174,54 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     private void update() {
-        //calculate the scale for x and y
         float scaleX = getWidth() / (float) GAME_WIDTH;
         float scaleY = getHeight() / (float) GAME_HEIGHT;
-
-        //convert mouse screen coordinates to game logical coords
         int mx = (int)(mouse.x / scaleX);
         int my = (int)(mouse.y / scaleY);
 
         if (gameState == TITLE_STATE) {
-            if (mouse.pressed && playButton.contains(mouse.x, mouse.y)) {
-                gameState = PLAY_STATE;
+            if (mouse.pressed) {
+                if (btnPvP.contains(mx, my)) {
+                    playAgainstAI = false;
+                    gameState = PLAY_STATE;
+                    startGame();
+                    mouse.pressed = false;
+                } else if (btnPvE.contains(mx, my)) {
+                    playAgainstAI = true;
+                    gameState = AI_SELECTOR_STATE;
+                    mouse.pressed = false;
+                }
+            }
+            return;
+        }
+
+        if (gameState == AI_SELECTOR_STATE) {
+            if (mouse.pressed) {
+                if (btnBot1.contains(mx, my)) {
+                    selectedBotName = "Chi Bao (Easy)";
+                    selectedBotDepth = 2;
+                    selectedBotImage = imgChiBao;
+                } 
+                else if (btnBot2.contains(mx, my)) {
+                    selectedBotName = "Gia (Normal)";
+                    selectedBotDepth = 3;
+                    selectedBotImage = imgGia;
+                } 
+                else if (btnBot3.contains(mx, my)) {
+                    selectedBotName = "Mr. Tung (Hard)";
+                    selectedBotDepth = 4;
+                    selectedBotImage = imgTung;
+                }
+                else if (btnColorWhite.contains(mx, my)) playerChosenColor = WHITE;
+                else if (btnColorBlack.contains(mx, my)) playerChosenColor = BLACK;
+                else if (btnStartGame.contains(mx, my)) {
+                    gameState = PLAY_STATE;
+                    startGame();
+                }
+                else if (btnBack.contains(mx, my)) {
+                    gameState = TITLE_STATE;
+                }
+                mouse.pressed = false;
             }
             return;
         }
@@ -154,8 +229,12 @@ public class GamePanel extends JPanel implements Runnable {
         if (promotion) { promotionInput(mx, my); return; }
         if (gameOver || stalemate) return;
 
-        // Block player input while AI is thinking
-        if (aiThinking) return; 
+        if (playAgainstAI && aiThinking) return;
+        
+        // Fail-safe logic check
+        if (playAgainstAI && CURRENT_COLOR != playerChosenColor && !aiThinking) {
+             // Logic handled in finishTurn, this block intentionally empty
+        }
 
         int col = mx / Board.SQUARE_SIZE;
         int row = my / Board.SQUARE_SIZE;
@@ -164,6 +243,7 @@ public class GamePanel extends JPanel implements Runnable {
             if (activePiece == null) {
                 piece p = getPieceAt(col, row);
                 if (p != null && p.color == CURRENT_COLOR) {
+                    if (playAgainstAI && p.color != playerChosenColor) return;
                     activePiece = p;
                     legalMoves = p.getLegalMoves();
                 }
@@ -190,29 +270,18 @@ public class GamePanel extends JPanel implements Runnable {
             pieces.remove(captured);
             if(captured.color == WHITE) capturedWhite.add(captured);
             if(captured.color == BLACK) capturedBlack.add(captured);
-
-        }
-        //Sound effect for capture and Move
-        if(captured!=null){
-           capSE();
-
-        }
-        else{
+            capSE();
+        } else {
             moveSE();
         }
 
-
-        // Reset En Passant flag for all pieces
-        for (piece pc : pieces) {
-            pc.twoStepped = false;
-        }
+        for (piece pc : pieces) pc.twoStepped = false;
 
         board[fromCol][fromRow] = null;
         board[toCol][toRow] = p;
         p.col = toCol; p.row = toRow;
         p.updatePos();
 
-        // Castling
         if (p instanceof King && Math.abs(toCol - fromCol) == 2) {
             int rookCol = toCol > fromCol ? 7 : 0;
             int rookNew = toCol > fromCol ? 5 : 3;
@@ -223,7 +292,6 @@ public class GamePanel extends JPanel implements Runnable {
             rook.updatePos();
         }
 
-        // En Passant
         if (p instanceof Pawn && captured == null && toCol != fromCol) {
             int captureRow = p.color == WHITE ? toRow + 1 : toRow - 1;
             captured = board[toCol][captureRow];
@@ -233,12 +301,11 @@ public class GamePanel extends JPanel implements Runnable {
             }
         }
 
-        // Promotion Logic
         if (p instanceof Pawn && (toRow == 0 || toRow == 7)) {
             promotion = true;
             promoSE();
-            promoPiece = p; //Store the pawn so we can access it in promotionInput()
-            return;         //Return early! Don't finish turn yet.
+            promoPiece = p;
+            return;
         }
         finishTurn();
     }
@@ -247,12 +314,18 @@ public class GamePanel extends JPanel implements Runnable {
         CURRENT_COLOR = 1 - CURRENT_COLOR;
         updateKingCache();
 
-        piece king = null;
-        if (CURRENT_COLOR == WHITE) king = whiteKing;
-        else king = blackKing;
+        // --- FIXED: REPLACED TERNARY OPERATOR WITH IF/ELSE ---
+        piece king;
+        if (CURRENT_COLOR == WHITE) {
+            king = whiteKing;
+        } else {
+            king = blackKing;
+        }
+        // -----------------------------------------------------
 
         boolean inCheck = king != null && king.isAttacked();
         boolean noMoves = true;
+        
         for (piece pc : pieces) {
             if (pc.color == CURRENT_COLOR && !pc.getLegalMoves().isEmpty()) {
                 noMoves = false;
@@ -263,34 +336,42 @@ public class GamePanel extends JPanel implements Runnable {
         if (inCheck && noMoves) gameOver = true;
         else if (noMoves) stalemate = true;
         
-        // AI trigger
-        if (playAgainstAI && CURRENT_COLOR == BLACK && !gameOver && !stalemate && !aiThinking) {
-            aiThinking = true;
-            
-            // Run AI in background thread to avoid freezing UI
-            new Thread(() -> {
-                try {
-                    Thread.sleep(300); // Small delay to make it feel natural
-                    ChessAI.Move aiMove = ai.getBestMove(BLACK);
-                    
-                    if (aiMove != null) {
-                        // Execute move on Swing thread
-                        javax.swing.SwingUtilities.invokeLater(() -> {
-                            executeAIMove(aiMove);
-                            aiThinking = false;
-                        });
-                    } else {
-                        aiThinking = false;
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    aiThinking = false;
-                }
-            }).start();
+        if (playAgainstAI && !gameOver && !stalemate) {
+            if (CURRENT_COLOR != playerChosenColor) {
+                aiTurn();
+            }
         }
     }
+    
+    private void aiTurn() {
+        if (aiThinking) return;
+        aiThinking = true;
+        int currentGameId = gameId; 
+        
+        new Thread(() -> {
+            try {
+                Thread.sleep(500); 
+                if (gameId != currentGameId) return;
 
-    // Helper method to execute AI move
+                ChessAI.Move aiMove = ai.getBestMove(CURRENT_COLOR);
+                
+                if (aiMove != null) {
+                    javax.swing.SwingUtilities.invokeLater(() -> {
+                        if (gameId == currentGameId && gameState == PLAY_STATE) {
+                            executeAIMove(aiMove);
+                        }
+                        aiThinking = false;
+                    });
+                } else {
+                    aiThinking = false;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                aiThinking = false;
+            }
+        }).start();
+    }
+
     private void executeAIMove(ChessAI.Move aiMove) {
         executeMove(aiMove.fromCol, aiMove.fromRow, aiMove.toCol, aiMove.toRow);
     }
@@ -300,7 +381,6 @@ public class GamePanel extends JPanel implements Runnable {
         int col = mx / Board.SQUARE_SIZE;
         int row = my / Board.SQUARE_SIZE;
 
-        // We use promoPiece now, NOT activePiece (which is null)
         piece newPiece = null;
         if (col == 9 && row == 3) newPiece = new Knight(CURRENT_COLOR, promoPiece.col, promoPiece.row);
         else if (col == 9 && row == 4) newPiece = new Rook(CURRENT_COLOR, promoPiece.col, promoPiece.row);
@@ -314,8 +394,7 @@ public class GamePanel extends JPanel implements Runnable {
             
             promotion = false;
             promoPiece = null;
-            
-            finishTurn(); // <--- Now we check for checkmate caused by the new Queen
+            finishTurn(); 
         }
     }
 
@@ -333,61 +412,44 @@ public class GamePanel extends JPanel implements Runnable {
             }
         }
     }
-    private void promoSE(){
-        sound.setFile(sound.PROMOTE);
-        sound.play();
-    }
-    private void moveSE(){
-        sound.setFile(sound.MOVE);
-        sound.play();
-    }
-    private void capSE(){
-        sound.setFile(sound.CAPTURE);
-        sound.play();
-    }
-    private void gameSE(){
-        sound.setFile(sound.GAME_END);
-        sound.play();
-    }
-    private void gameStart(){
-        sound.setFile(sound.GAME_START);
-        sound.play();
-    }
+    
+    private void promoSE(){ sound.setFile(sound.PROMOTE); sound.play(); }
+    private void moveSE(){ sound.setFile(sound.MOVE); sound.play(); }
+    private void capSE(){ sound.setFile(sound.CAPTURE); sound.play(); }
+    private void gameSE(){ sound.setFile(sound.GAME_END); sound.play(); }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
 
-        //scale things to fit window
         float scaleX = getWidth() / (float) GAME_WIDTH;
         float scaleY = getHeight() / (float) GAME_HEIGHT;
         g2.scale(scaleX, scaleY);
+        
+        int mx = (int)(mouse.x / scaleX);
+        int my = (int)(mouse.y / scaleY);
 
         if (gameState == TITLE_STATE) {
-            if (background != null) g2.drawImage(background, 0, 0, GAME_WIDTH, GAME_HEIGHT, null);
-            g2.setColor(Color.GREEN);
-            g2.setFont(new Font("Monospaced", Font.BOLD, 90));
-            String title = "Chess Code Strike";
-            int w = g2.getFontMetrics().stringWidth(title);
-            g2.drawString(title, GAME_WIDTH/2 - w/2, 200);
-
-            // mouse coordination for resizing
-            int mx = (int)(mouse.x / scaleX);
-            int my = (int)(mouse.y / scaleY);
-
-            g2.setColor(mouse.pressed && playButton.contains(mx, my) ? Color.CYAN : Color.MAGENTA);
-            g2.fill(playButton);
-            g2.setColor(Color.BLACK);
-            g2.setFont(new Font("Monospaced", Font.BOLD, 40));
-            g2.drawString("PLAY", 565, 410);
+            drawTitleScreen(g2, mx, my);
+            return;
+        }
+        
+        if (gameState == AI_SELECTOR_STATE) {
+            drawAISelectionScreen(g2, mx, my);
             return;
         }
 
         boardDrawer.draw(g2);
 
-        piece currentKing = null;
-        if (CURRENT_COLOR == WHITE) currentKing = whiteKing;
-        else currentKing = blackKing;
+        // --- FIXED: REPLACED TERNARY WITH IF/ELSE ---
+        piece currentKing;
+        if (CURRENT_COLOR == WHITE) {
+            currentKing = whiteKing;
+        } else {
+            currentKing = blackKing;
+        }
+        // --------------------------------------------
         
         if (currentKing != null && currentKing.isAttacked()) {
             g2.setColor(new Color(255, 0, 0, 100));
@@ -400,15 +462,116 @@ public class GamePanel extends JPanel implements Runnable {
             g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.7f));
             activePiece.draw(g2);
             g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
-
+            
             g2.setColor(new Color(100, 255, 100, 180));
             for (Point pt : legalMoves) {
                 g2.fillOval(pt.x * 100 + 38, pt.y * 100 + 38, 24, 24);
             }
         }
 
+        drawSidebar(g2);
+
+        if (gameOver) {
+            g2.setColor(Color.YELLOW.darker());
+            g2.setFont(new Font("Arial", Font.BOLD, 80));
+            g2.drawString(CURRENT_COLOR == WHITE ? "BLACK WINS" : "WHITE WINS", 200, 420);
+            g2.setFont(new Font("Arial", Font.BOLD, 30));
+            g2.drawString("Press 'R' to Return to Menu", 250, 500);
+        }
+        if (stalemate) {
+            g2.setColor(Color.YELLOW);
+            g2.drawString("STALEMATE", 350, 420);
+        }
+    }
+
+    private void drawTitleScreen(Graphics2D g2, int mx, int my) {
+        if (background != null) g2.drawImage(background, 0, 0, GAME_WIDTH, GAME_HEIGHT, null);
+        
+        g2.setColor(Color.GREEN);
+        g2.setFont(new Font("Monospaced", Font.BOLD, 90));
+        String title = "Chess Code Strike";
+        int w = g2.getFontMetrics().stringWidth(title);
+        g2.drawString(title, GAME_WIDTH/2 - w/2, 200);
+
+        g2.setColor(btnPvP.contains(mx, my) ? Color.CYAN : Color.WHITE);
+        g2.fill(btnPvP);
+        g2.setColor(Color.BLACK);
+        g2.setFont(new Font("Arial", Font.BOLD, 40));
+        g2.drawString("Human vs Human", btnPvP.x + 20, btnPvP.y + 55);
+        
+        g2.setColor(btnPvE.contains(mx, my) ? Color.CYAN : Color.WHITE);
+        g2.fill(btnPvE);
+        g2.setColor(Color.BLACK);
+        g2.drawString("Human vs AI", btnPvE.x + 75, btnPvE.y + 55);
+    }
+
+    private void drawAISelectionScreen(Graphics2D g2, int mx, int my) {
+        g2.setColor(new Color(30, 30, 30));
+        g2.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        
+        g2.setColor(Color.WHITE);
+        g2.setFont(new Font("Arial", Font.BOLD, 50));
+        g2.drawString("Choose Opponent", 400, 100);
+
+        drawBotCard(g2, btnBot1, "Chi Bao", "Easy (Depth 2)", imgChiBao, selectedBotDepth == 2, mx, my);
+        drawBotCard(g2, btnBot2, "Gia", "Normal (Depth 3)", imgGia, selectedBotDepth == 3, mx, my);
+        drawBotCard(g2, btnBot3, "Mr. Tung", "Hard (Depth 4)", imgTung, selectedBotDepth == 4, mx, my);
+
+        g2.setColor(Color.WHITE);
+        g2.drawString("Choose Your Color:", 400, 530);
+        
+        g2.setColor(playerChosenColor == WHITE ? Color.GREEN : Color.GRAY);
+        if (btnColorWhite.contains(mx, my)) g2.setColor(Color.CYAN);
+        g2.fill(btnColorWhite);
+        g2.setColor(Color.BLACK);
+        g2.drawString("WHITE", btnColorWhite.x + 20, btnColorWhite.y + 45);
+
+        g2.setColor(playerChosenColor == BLACK ? Color.GREEN : Color.GRAY);
+        if (btnColorBlack.contains(mx, my)) g2.setColor(Color.CYAN);
+        g2.fill(btnColorBlack);
+        g2.setColor(Color.WHITE); 
+        g2.drawString("BLACK", btnColorBlack.x + 20, btnColorBlack.y + 45);
+
+        g2.setColor(btnStartGame.contains(mx, my) ? Color.CYAN : Color.MAGENTA);
+        g2.fill(btnStartGame);
+        g2.setColor(Color.BLACK);
+        g2.setFont(new Font("Arial", Font.BOLD, 50));
+        g2.drawString("START", btnStartGame.x + 70, btnStartGame.y + 60);
+
+        g2.setColor(Color.LIGHT_GRAY);
+        g2.fill(btnBack);
+        g2.setColor(Color.BLACK);
+        g2.setFont(new Font("Arial", Font.PLAIN, 20));
+        g2.drawString("Back", btnBack.x + 25, btnBack.y + 30);
+    }
+
+    private void drawBotCard(Graphics2D g2, Rectangle rect, String name, String diff, BufferedImage img, boolean selected, int mx, int my) {
+        if (selected) g2.setColor(Color.GREEN);
+        else if (rect.contains(mx, my)) g2.setColor(Color.YELLOW);
+        else g2.setColor(Color.GRAY);
+        
+        g2.fill(rect);
+        
+        if (img != null) {
+            g2.drawImage(img, rect.x + 25, rect.y + 20, 200, 200, null);
+        } else {
+            g2.setColor(Color.BLACK);
+            g2.fillRect(rect.x + 25, rect.y + 20, 200, 200);
+            g2.setColor(Color.WHITE);
+            g2.drawString("?", rect.x + 100, rect.y + 120);
+        }
+        
+        g2.setColor(Color.BLACK);
+        g2.setFont(new Font("Arial", Font.BOLD, 25));
+        g2.drawString(name, rect.x + 20, rect.y + 250);
+        g2.setFont(new Font("Arial", Font.PLAIN, 18));
+        g2.drawString(diff, rect.x + 20, rect.y + 280);
+    }
+
+    private void drawSidebar(Graphics2D g2) {
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 36));
+
         if (promotion) {
             g2.drawString("Promote to:", 880, 200);
             new Knight(CURRENT_COLOR,9,3).draw(g2);
@@ -416,11 +579,27 @@ public class GamePanel extends JPanel implements Runnable {
             new Bishop(CURRENT_COLOR,10,3).draw(g2);
             new Queen(CURRENT_COLOR,10,4).draw(g2);
         } else if (!gameOver && !stalemate) {
-            g2.drawString(CURRENT_COLOR == WHITE ? "White's turn" : "Black's turn", 870, 95);
+            g2.drawString(CURRENT_COLOR == WHITE ? "White's turn" : "Black's turn", 870, 80);
 
-            if (aiThinking) {
+            if (playAgainstAI) {
+                g2.setColor(Color.LIGHT_GRAY);
+                g2.setFont(new Font("Arial", Font.PLAIN, 24));
+                g2.drawString("Opponent:", 850, 350);
+                
+                if (selectedBotImage != null) {
+                    g2.drawImage(selectedBotImage, 850, 370, 150, 150, null);
+                }
                 g2.setColor(Color.YELLOW);
-                g2.drawString("Mr. Tung is thinking...", 850, 400);
+                g2.setFont(new Font("Arial", Font.BOLD, 28));
+                g2.drawString(selectedBotName, 850, 560);
+                
+                if (aiThinking) {
+                    g2.setColor(Color.RED);
+                    g2.setFont(new Font("Monospaced", Font.ITALIC, 20));
+                    g2.drawString("Thinking...", 850, 600);
+                }
+            } else {
+                g2.drawString("PvP Mode", 870, 400);
             }
 
             int x = 840;
@@ -438,15 +617,6 @@ public class GamePanel extends JPanel implements Runnable {
                 x += 40;
                 if(x > 1100) {x = 840; y += 40;}
             }
-        }
-        if (gameOver) {
-            g2.setColor(Color.YELLOW);
-            g2.setFont(new Font("Arial", Font.BOLD, 80));
-            g2.drawString(CURRENT_COLOR == WHITE ? "BLACK WINS" : "WHITE WINS", 700, 420);
-        }
-        if (stalemate) {
-            g2.setColor(Color.YELLOW);
-            g2.drawString("STALEMATE", 820, 420);
         }
     }
 }

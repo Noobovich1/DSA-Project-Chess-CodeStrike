@@ -21,17 +21,23 @@ public class King extends piece {
             return isValidSquare(targetCol, targetRow);
         }
 
-        // Castling
-        if (!moved && targetRow == row && (targetCol == 2 || targetCol == 6)) {
-            int rookCol = targetCol == 6 ? 7 : 0;
-            piece rook = GamePanel.board[rookCol][row];
-            if (rook instanceof Rook && !rook.moved) {
-                // Check path is clear
-                int step = targetCol > col ? 1 : -1;
-                for (int c = col + step; c != targetCol; c += step) {
-                    if (GamePanel.board[c][row] != null) return false;
+        // --- CASTLING LOGIC FIX ---
+        if (!moved && targetRow == row) {
+            // King Side Castling (Target col 6)
+            if (targetCol == 6) {
+                piece rook = GamePanel.board[7][row];
+                if (rook instanceof Rook && !rook.moved && GamePanel.board[5][row] == null && GamePanel.board[6][row] == null) {
+                    return true;
                 }
-                if (GamePanel.board[targetCol][row] == null) {
+            }
+            // Queen Side Castling (Target col 2)
+            else if (targetCol == 2) {
+                piece rook = GamePanel.board[0][row];
+                // MUST check col 1, 2, and 3 (b, c, d)
+                if (rook instanceof Rook && !rook.moved && 
+                    GamePanel.board[1][row] == null && 
+                    GamePanel.board[2][row] == null && 
+                    GamePanel.board[3][row] == null) {
                     return true;
                 }
             }
