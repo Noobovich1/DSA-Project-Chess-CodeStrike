@@ -1,204 +1,163 @@
 package piece;
 
-import java.awt.Graphics2D;
+import main.*;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.ArrayList;
 import javax.imageio.ImageIO;
-import main.Board;
-import main.GamePanel;
-import main.Type;
 
-public class piece {
-    
+public abstract class piece {
     public BufferedImage image;
-    public int x,y;
+    public int x, y;
     public int col, row, preCOL, preROW;
     public int color;
-    public piece hittingP;
-    public boolean moved, twoStepped;
+    public boolean moved = false, twoStepped = false;
     public Type type;
 
-    public piece(int color, int col, int row){
+    public piece(int color, int col, int row) {
         this.color = color;
-        this.row = row;
         this.col = col;
-
-        // avoid calling overridable methods from constructor
+        this.row = row;
         x = col * Board.SQUARE_SIZE;
         y = row * Board.SQUARE_SIZE;
         preCOL = col;
         preROW = row;
     }
 
-    public BufferedImage getImage(String imagePath){
+    public BufferedImage getImage(String path) {
         try {
-            this.image = ImageIO.read(getClass().getResourceAsStream(imagePath+".png"));
+            return ImageIO.read(getClass().getResourceAsStream(path + ".png"));
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load image: " + imagePath, e);
+            e.printStackTrace();
+            return null;
         }
-        return this.image;
     }
 
-    public int getX(int col){
-        return col*Board.SQUARE_SIZE;
-    }
-
-    public int getY(int row){
-        return row*Board.SQUARE_SIZE;
-    }
-
-    //detect the centre of the piece coordinate
-    public int getCol(int x){
-        return (x + Board.HALF_SQUARE_SIZE)/Board.SQUARE_SIZE;
-    }
-
-    public int getRow(int y){
-        return (y + Board.HALF_SQUARE_SIZE)/Board.SQUARE_SIZE;
-    }
-
-    public void updatePos(){
-        // Check two-step BEFORE updating moved flag
-        if(type == Type.PAWN && !moved){
-            int rowDiff = Math.abs(row - preROW);  // Use row, not y coordinate
-            if(rowDiff == 2){
-                twoStepped = true;
-            }
-        }
-    
-        x = getX(col);
-        y = getY(row);
-        preCOL = col;  // Save current position
+    public void updatePos() {
+        if (type == Type.PAWN && Math.abs(row - preROW) == 2) twoStepped = true;
+        x = col * Board.SQUARE_SIZE;
+        y = row * Board.SQUARE_SIZE;
+        preCOL = col;
         preROW = row;
-        moved = true;  // Now set moved flag
+        moved = true;
     }
-    
-    public void resetPosition(){
-        col=preCOL;
-        row=preROW;
-        x=getX(col);
-        y=getY(row);
+
+    public void resetPosition() {
+        col = preCOL;
+        row = preROW;
+        x = col * Board.SQUARE_SIZE;
+        y = row * Board.SQUARE_SIZE;
     }
-    public piece getHittingP(int targetCol,int targetRow){
-        for(piece piece : GamePanel.simPieces){
-            if(piece.col==targetCol && piece.row==targetRow && piece!=this){
-                return piece;
+
+    public boolean isWithinBoard(int col, int row) {
+        return col >= 0 && col < 8 && row >= 0 && row < 8;
+    }
+
+    public boolean isValidSquare(int targetCol, int targetRow) {
+        piece p = GamePanel.board[targetCol][targetRow];
+        return p == null || p.color != this.color;
+    }
+
+    public boolean isSameSquare(int col, int row) {
+        return col == this.col && row == this.row;
+    }
+
+    public boolean isPathClearStraight(int targetCol, int targetRow) {
+        int dx = Integer.signum(targetCol - col);
+        int dy = Integer.signum(targetRow - row);
+        int x = col + dx;
+        int y = row + dy;
+        while (x != targetCol || y != targetRow) {
+            if (GamePanel.board[x][y] != null) return false;
+            x += dx;
+            y += dy;
+        }
+        return true;
+    }
+
+    public boolean isPathClearDiagonal(int targetCol, int targetRow) {
+        int dx = Integer.signum(targetCol - col);
+        int dy = Integer.signum(targetRow - row);
+        int x = col + dx;
+        int y = row + dy;
+        while (x != targetCol || y != targetRow) {
+            if (GamePanel.board[x][y] != null) return false;
+            x += dx;
+            y += dy;
+        }
+        return true;
+    }
+
+    public ArrayList<Point> getLegalMoves() {
+        ArrayList<Point> moves = new ArrayList<>();
+        for (int c = 0; c < 8; c++) {
+            for (int r = 0; r < 8; r++) {
+                if (canMove(c, r) && !leavesKingInCheck(c, r)) {
+                    moves.add(new Point(c, r));
+                }
             }
         }
-        return null;
+        return moves;
     }
-    //FUNCTION ONLY USE FOR REWRITE PURPOSE ONLY DO NOT TOUCH OR I WILL TOUCH YOU
-    public boolean canMove(int targetCol, int targetRow){
-        return false;
-    }
-    //CHECK IF IT IN THE BOARD
-    public boolean isWithinboard(int targetCol,int targetRow){
-        return (targetCol >= 0 && targetCol <= 7) && (targetRow >= 0 && targetRow <= 7);
-    }
-    // CHECK THE SQUARE IS OCCUPIED OR NOT
-    public boolean isvalidSquare(int targetCol,int targetRow){  
-        hittingP=getHittingP(targetCol,targetRow);
-        if(hittingP==null){
-            return true;
+
+    private boolean leavesKingInCheck(int toCol, int toRow) {
+        piece[][] b = GamePanel.board;
+        piece captured = b[toCol][toRow];
+        
+        //simulate the move on the board array
+        b[col][row] = null;
+        b[toCol][toRow] = this;
+        
+        int oldC = col; 
+        int oldR = row;
+        col = toCol; 
+        row = toRow;
+
+        // Find our King
+        piece king = null;
+        for (piece p : GamePanel.pieces) {
+            if (p.type == Type.KING && p.color == this.color) {
+                king = p;
+                break;
+            }
         }
-        else{
-            if(hittingP.color!=this.color){
+
+        boolean check = false;
+        if (king != null) {
+            //Check if attacked, BUT IGNORE THE PIECE WE JUST CAPTURED
+            check = king.isAttacked(captured);
+        }
+
+        //Restore the board
+        b[toCol][toRow] = captured;
+        col = oldC; 
+        row = oldR;
+        b[col][row] = this;
+
+        return check;
+    }
+
+    // Standard isAttacked (for normal game loop)
+    public boolean isAttacked() {
+        return isAttacked(null);
+    }
+
+    // Overloaded isAttacked (for move simulation)
+    public boolean isAttacked(piece ignoredPiece) {
+        for (piece p : GamePanel.pieces) {
+            if (p == ignoredPiece) continue; // IGNORE THE CAPTURED PHANTOM (FORCES) PIECE
+            
+            if (p.color != this.color && p.canMove(this.col, this.row)) {
                 return true;
             }
-            else{
-                hittingP=null;
-            }
         }
         return false;
     }
-    //CHECK IF THE TARGET SQUARE IS THE SAME AS THE CURRENT SQUARE
-    public boolean isSameSquare(int targetCol,int targetRow){
-        return targetCol == preCOL && targetRow == preROW;
-    }
 
-    public boolean pieceIsOnStraightLine(int targetCol, int targetRow) {
-        int stepCol = Integer.signum(targetCol - preCOL);
-        int stepRow = Integer.signum(targetRow - preROW);
+    public abstract boolean canMove(int targetCol, int targetRow);
 
-        int c = preCOL + stepCol;
-        int r = preROW + stepRow;
-
-        // Walk from the square next to the rook/queen up to (but not including) the target
-        while (c != targetCol || r != targetRow) {
-            for (piece p : GamePanel.simPieces) {
-                if (p.col == c && p.row == r) {
-                    hittingP = p; // found a blocker
-                    return true;
-                }
-            }
-            c += stepCol;
-            r += stepRow;
-        }
-
-        return false; // path is clear
-    }
-    
-    //checking if the bishop or queen path is clear and make sure they don't jump over pieces
-    public boolean pieceIsOnDiagonalLine(int targetCol, int targetRow){
-        
-        if(targetRow < preROW){
-            // Up Left
-            for(int c = preCOL-1; c > targetCol; c--){
-                int diff = Math.abs(c - preCOL);
-                for(piece piece : GamePanel.simPieces){
-                    if(piece.col == c && piece.row == preROW - diff){
-                        hittingP = piece;
-                        return true;
-                    }
-                }
-            }
-            // Up Right
-            for(int c = preCOL+1; c < targetCol; c++){
-                int diff = Math.abs(c - preCOL);
-                for(piece piece : GamePanel.simPieces){
-                    if(piece.col == c && piece.row == preROW - diff){
-                        hittingP = piece;
-                        return true;
-                    }
-                }
-            }
-        }
-
-        if(targetRow > preROW){
-            // Down Left
-            for(int c = preCOL-1; c > targetCol; c--){
-                int diff = Math.abs(c - preCOL);
-                for(piece piece : GamePanel.simPieces){
-                    if(piece.col == c && piece.row == preROW + diff){
-                        hittingP = piece;
-                        return true;
-                    }
-                }
-            }
-            // Down Right
-            for(int c = preCOL+1; c < targetCol; c++){
-                int diff = Math.abs(c - preCOL);
-                for(piece piece : GamePanel.simPieces){
-                    if(piece.col == c && piece.row == preROW + diff){
-                        hittingP = piece;
-                        return true;
-                    }
-                }
-            }
-        }
-        
-        return false;
-    }
-
-    public int getIndexofpiece(){
-        for(int i=0;i<GamePanel.simPieces.size();i++){
-            if(GamePanel.simPieces.get(i)==this){
-                return i; 
-            }
-        }
-        return 0;
-    }
-
-    public void draw(Graphics2D g2){
+    public void draw(Graphics2D g2) {
         g2.drawImage(image, x, y, Board.SQUARE_SIZE, Board.SQUARE_SIZE, null);
     }
 }
