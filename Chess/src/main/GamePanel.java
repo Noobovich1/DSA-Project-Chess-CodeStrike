@@ -1,13 +1,14 @@
 // src/main/GamePanel.java
 package main;
 
-import piece.*;
+import engine.ChessAI;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 import javax.imageio.ImageIO;
 import javax.swing.JPanel;
+import piece.*;
 
 public class GamePanel extends JPanel implements Runnable {
     public static final int GAME_WIDTH = 1200;
@@ -40,6 +41,13 @@ public class GamePanel extends JPanel implements Runnable {
     Rectangle playButton = new Rectangle(500, 360, 200, 80);
 
     private Sound sound=new Sound();
+
+    // AI Fields
+    public ChessAI ai;
+    public boolean playAgainstAI = true; //False for 2 player mode
+    private boolean aiThinking = false;
+
+
     public GamePanel() {
         //setPreferredSize(new Dimension(GAME_WIDTH, GAME_HEIGHT));
         setBackground(Color.BLACK);
@@ -54,6 +62,10 @@ public class GamePanel extends JPanel implements Runnable {
         } catch (IOException ignored) {}
 
         setupNewGame();
+
+        // Initialize AI
+        ai = new ChessAI(this);
+        ai.setDepth(3); // 3 = medium difficulty, 4 = hard
     }
 
     public void launch() {
@@ -67,6 +79,7 @@ public class GamePanel extends JPanel implements Runnable {
         gameState = TITLE_STATE;
         capturedBlack.clear();
         capturedWhite.clear();
+        aiThinking = false;
         repaint();
     }
 
@@ -140,6 +153,9 @@ public class GamePanel extends JPanel implements Runnable {
 
         if (promotion) { promotionInput(mx, my); return; }
         if (gameOver || stalemate) return;
+
+        // Block player input while AI is thinking
+        if (aiThinking) return; 
 
         int col = mx / Board.SQUARE_SIZE;
         int row = my / Board.SQUARE_SIZE;
@@ -246,6 +262,37 @@ public class GamePanel extends JPanel implements Runnable {
 
         if (inCheck && noMoves) gameOver = true;
         else if (noMoves) stalemate = true;
+        
+        // AI trigger
+        if (playAgainstAI && CURRENT_COLOR == BLACK && !gameOver && !stalemate && !aiThinking) {
+            aiThinking = true;
+            
+            // Run AI in background thread to avoid freezing UI
+            new Thread(() -> {
+                try {
+                    Thread.sleep(300); // Small delay to make it feel natural
+                    ChessAI.Move aiMove = ai.getBestMove(BLACK);
+                    
+                    if (aiMove != null) {
+                        // Execute move on Swing thread
+                        javax.swing.SwingUtilities.invokeLater(() -> {
+                            executeAIMove(aiMove);
+                            aiThinking = false;
+                        });
+                    } else {
+                        aiThinking = false;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    aiThinking = false;
+                }
+            }).start();
+        }
+    }
+
+    // Helper method to execute AI move
+    private void executeAIMove(ChessAI.Move aiMove) {
+        executeMove(aiMove.fromCol, aiMove.fromRow, aiMove.toCol, aiMove.toRow);
     }
 
     private void promotionInput(int mx, int my) {
@@ -370,6 +417,12 @@ public class GamePanel extends JPanel implements Runnable {
             new Queen(CURRENT_COLOR,10,4).draw(g2);
         } else if (!gameOver && !stalemate) {
             g2.drawString(CURRENT_COLOR == WHITE ? "White's turn" : "Black's turn", 870, 95);
+
+            if (aiThinking) {
+                g2.setColor(Color.YELLOW);
+                g2.drawString("Mr. Tung is thinking...", 850, 400);
+            }
+
             int x = 840;
             int y = 640;
             int scale = 45;

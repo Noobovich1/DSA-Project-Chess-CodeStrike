@@ -1,7 +1,7 @@
 package main;
 
-import javax.swing.JFrame;
 import java.awt.Dimension;
+import javax.swing.JFrame;
 
 public class main {
     public static void main(String[] args) {
