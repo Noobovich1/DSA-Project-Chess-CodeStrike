@@ -10,7 +10,7 @@ import java.util.Comparator;
 public class ChessAI {
     private GamePanel gp;
     
-    // Piece values
+    // Piece values (Standardized)
     private static final int PAWN_VALUE = 100;
     private static final int KNIGHT_VALUE = 320;
     private static final int BISHOP_VALUE = 330;
@@ -18,10 +18,12 @@ public class ChessAI {
     private static final int QUEEN_VALUE = 900;
     private static final int KING_VALUE = 20000;
     
-    // Search depth
-    private int searchDepth = 3;
+    // Search depth (4 is usually a good balance for Java Swing without bitboards)
+    private int searchDepth = 4;
     
-    // Position value tables
+    // --- POSITION TABLES (Flip for black in logic) ---
+    // These define where pieces "like" to be.
+    
     private static final int[][] PAWN_TABLE = {
         {0,  0,  0,  0,  0,  0,  0,  0},
         {50, 50, 50, 50, 50, 50, 50, 50},
@@ -32,7 +34,7 @@ public class ChessAI {
         {5, 10, 10,-20,-20, 10, 10,  5},
         {0,  0,  0,  0,  0,  0,  0,  0}
     };
-    
+
     private static final int[][] KNIGHT_TABLE = {
         {-50,-40,-30,-30,-30,-30,-40,-50},
         {-40,-20,  0,  0,  0,  0,-20,-40},
@@ -43,44 +45,102 @@ public class ChessAI {
         {-40,-20,  0,  5,  5,  0,-20,-40},
         {-50,-40,-30,-30,-30,-30,-40,-50}
     };
-    
+
+    private static final int[][] BISHOP_TABLE = {
+        {-20,-10,-10,-10,-10,-10,-10,-20},
+        {-10,  0,  0,  0,  0,  0,  0,-10},
+        {-10,  0,  5, 10, 10,  5,  0,-10},
+        {-10,  5,  5, 10, 10,  5,  5,-10},
+        {-10,  0, 10, 10, 10, 10,  0,-10},
+        {-10, 10, 10, 10, 10, 10, 10,-10},
+        {-10,  5,  0,  0,  0,  0,  5,-10},
+        {-20,-10,-10,-10,-10,-10,-10,-20}
+    };
+
+    private static final int[][] ROOK_TABLE = {
+        {0,  0,  0,  0,  0,  0,  0,  0},
+        {5, 10, 10, 10, 10, 10, 10,  5},
+        {-5,  0,  0,  0,  0,  0,  0, -5},
+        {-5,  0,  0,  0,  0,  0,  0, -5},
+        {-5,  0,  0,  0,  0,  0,  0, -5},
+        {-5,  0,  0,  0,  0,  0,  0, -5},
+        {-5,  0,  0,  0,  0,  0,  0, -5},
+        {0,  0,  0,  5,  5,  0,  0,  0}
+    };
+
+    private static final int[][] QUEEN_TABLE = {
+        {-20,-10,-10, -5, -5,-10,-10,-20},
+        {-10,  0,  0,  0,  0,  0,  0,-10},
+        {-10,  0,  5,  5,  5,  5,  0,-10},
+        {-5,   0,  5,  5,  5,  5,  0, -5},
+        {0,    0,  5,  5,  5,  5,  0, -5},
+        {-10,  5,  5,  5,  5,  5,  0,-10},
+        {-10,  0,  5,  0,  0,  0,  0,-10},
+        {-20,-10,-10, -5, -5,-10,-10,-20}
+    };
+
+    // King safety table (Middle game)
+    private static final int[][] KING_MID_TABLE = {
+        {-30,-40,-40,-50,-50,-40,-40,-30},
+        {-30,-40,-40,-50,-50,-40,-40,-30},
+        {-30,-40,-40,-50,-50,-40,-40,-30},
+        {-30,-40,-40,-50,-50,-40,-40,-30},
+        {-20,-30,-30,-40,-40,-30,-30,-20},
+        {-10,-20,-20,-20,-20,-20,-20,-10},
+        {20, 20,  0,  0,  0,  0, 20, 20},
+        {20, 30, 10,  0,  0, 10, 30, 20}
+    };
+
+    // King activity table (End game)
+    private static final int[][] KING_END_TABLE = {
+        {-50,-40,-30,-20,-20,-30,-40,-50},
+        {-30,-20,-10,  0,  0,-10,-20,-30},
+        {-30,-10, 20, 30, 30, 20,-10,-30},
+        {-30,-10, 30, 40, 40, 30,-10,-30},
+        {-30,-10, 30, 40, 40, 30,-10,-30},
+        {-30,-10, 20, 30, 30, 20,-10,-30},
+        {-30,-30,  0,  0,  0,  0,-30,-30},
+        {-50,-30,-30,-30,-30,-30,-30,-50}
+    };
+
     public ChessAI(GamePanel gp) {
         this.gp = gp;
     }
     
     public void setDepth(int depth) {
-        this.searchDepth = Math.max(1, Math.min(depth, 5));
+        this.searchDepth = depth;
     }
     
-    // Main entry point
     public Move getBestMove(int aiColor) {
         long startTime = System.currentTimeMillis();
         
+        // Initial call to minimax
         MoveScore result = minimax(searchDepth, aiColor, Integer.MIN_VALUE, Integer.MAX_VALUE, true);
         
         long elapsed = System.currentTimeMillis() - startTime;
-        System.out.println("AI searched depth " + searchDepth + " in " + elapsed + "ms");
-        if (result.move != null) {
-            System.out.println("Best move: " + result.move.piece.type + " from (" + 
-                             result.move.fromCol + "," + result.move.fromRow + ") to (" + 
-                             result.move.toCol + "," + result.move.toRow + ") - Score: " + result.score);
-        }
+        System.out.println("AI Thought Time: " + elapsed + "ms | Eval: " + result.score);
         
         return result.move;
     }
     
-    // Minimax with alpha-beta pruning
+    // --- Minimax with Alpha-Beta Pruning ---
     private MoveScore minimax(int depth, int color, int alpha, int beta, boolean maximizing) {
+        // Base case: Use Quiescence Search instead of raw evaluation
         if (depth == 0) {
-            return new MoveScore(null, evaluateBoard(color));
+            int qScore = quiescenceSearch(alpha, beta, color);
+            // If maximizing (AI), we return the score directly. 
+            // If minimizing (Player), the score is from AI's perspective, so logic handles it.
+            return new MoveScore(null, qScore);
         }
         
         ArrayList<Move> moves = getAllLegalMoves(color);
         
+        // Check for Game Over (Checkmate/Stalemate)
         if (moves.isEmpty()) {
             piece king = findKing(color);
             if (king != null && king.isAttacked()) {
-                return new MoveScore(null, maximizing ? -100000 : 100000);
+                // Prefer checkmate sooner (add depth to score)
+                return new MoveScore(null, maximizing ? -100000 - depth : 100000 + depth);
             }
             return new MoveScore(null, 0); // Stalemate
         }
@@ -93,6 +153,7 @@ public class ChessAI {
             
             for (Move move : moves) {
                 BoardState state = makeMove(move);
+                // Recursive call
                 int score = minimax(depth - 1, 1 - color, alpha, beta, false).score;
                 undoMove(state);
                 
@@ -100,11 +161,9 @@ public class ChessAI {
                     maxScore = score;
                     bestMove = move;
                 }
-                
                 alpha = Math.max(alpha, score);
-                if (beta <= alpha) break;
+                if (beta <= alpha) break; // Beta Cut-off
             }
-            
             return new MoveScore(bestMove, maxScore);
             
         } else {
@@ -119,35 +178,94 @@ public class ChessAI {
                     minScore = score;
                     bestMove = move;
                 }
-                
                 beta = Math.min(beta, score);
-                if (beta <= alpha) break;
+                if (beta <= alpha) break; // Alpha Cut-off
             }
-            
             return new MoveScore(bestMove, minScore);
         }
     }
-    
-    // Evaluate board position
-    private int evaluateBoard(int aiColor) {
-        int score = 0;
+
+    // --- Quiescence Search ---
+    // Searches only captures to avoid the horizon effect
+    private int quiescenceSearch(int alpha, int beta, int color) {
+        int standPat = evaluateBoard(GamePanel.BLACK); // Always evaluate from AI perspective
         
-        for (piece p : GamePanel.pieces) {
-            int pieceValue = getPieceValue(p.type);
-            int positionValue = getPositionValue(p);
-            int totalValue = pieceValue + positionValue;
-            
-            if (p.color == aiColor) {
-                score += totalValue;
-            } else {
-                score -= totalValue;
+        // If the side to move is the MINIMIZER (White), we need to negate logic slightly
+        // But evaluateBoard returns (Black - White).
+        // If 'color' is BLACK (Maximizer), standPat is good if high.
+        // If 'color' is WHITE (Minimizer), standPat is good if low.
+        
+        // Simpler approach: Minimax usually handles the switching.
+        // Let's assume this method is called inside minimax structure.
+        // BUT, Quiescence is often implemented as NegaMax. To keep your Minimax structure:
+        
+        if (color == GamePanel.BLACK) { // Maximizing
+            if (standPat >= beta) return beta;
+            if (standPat > alpha) alpha = standPat;
+        } else { // Minimizing
+            if (standPat <= alpha) return alpha;
+            if (standPat < beta) beta = standPat;
+        }
+        
+        // Generate ONLY capture moves
+        ArrayList<Move> moves = getAllLegalMoves(color);
+        ArrayList<Move> captures = new ArrayList<>();
+        for(Move m : moves) {
+            if(GamePanel.board[m.toCol][m.toRow] != null) {
+                captures.add(m);
             }
         }
         
-        score += evaluateMobility(aiColor);
-        score += evaluateKingSafety(aiColor);
+        orderMoves(captures); // Important for Quiescence
         
-        return score;
+        if (color == GamePanel.BLACK) { // Maximizing
+            for (Move move : captures) {
+                BoardState state = makeMove(move);
+                int score = quiescenceSearch(alpha, beta, 1 - color);
+                undoMove(state);
+                
+                if (score >= beta) return beta;
+                if (score > alpha) alpha = score;
+            }
+            return alpha;
+        } else { // Minimizing
+            for (Move move : captures) {
+                BoardState state = makeMove(move);
+                int score = quiescenceSearch(alpha, beta, 1 - color);
+                undoMove(state);
+                
+                if (score <= alpha) return alpha;
+                if (score < beta) beta = score;
+            }
+            return beta;
+        }
+    }
+    
+    // --- Evaluation ---
+    // Returns: Positive if Black (AI) is winning, Negative if White is winning
+    private int evaluateBoard(int aiColor) {
+        int whiteScore = 0;
+        int blackScore = 0;
+        
+        boolean isEndgame = GamePanel.pieces.size() < 12;
+
+        for (piece p : GamePanel.pieces) {
+            int material = getPieceValue(p.type);
+            int position = getPositionValue(p, isEndgame);
+            
+            if (p.color == GamePanel.WHITE) {
+                whiteScore += (material + position);
+            } else {
+                blackScore += (material + position);
+            }
+        }
+        
+        // We removed mobility eval because it's too slow for this engine structure
+        // Speed allows deeper search, which is better than shallow search with mobility
+        
+        // Return score relative to BLACK (assuming AI is Black)
+        // If AI is Black: (Black - White) -> Positive is good for AI
+        return blackScore - whiteScore;
     }
     
     private int getPieceValue(Type type) {
@@ -162,99 +280,51 @@ public class ChessAI {
         }
     }
     
-    private int getPositionValue(piece p) {
+    private int getPositionValue(piece p, boolean isEndgame) {
         int row = p.row;
         int col = p.col;
         
-        if (p.color == GamePanel.BLACK) {
-            row = 7 - row;
-        }
+        // If piece is Black, we mirror the row index to use the same table
+        // (Tables are defined from the perspective of the piece starting at row 6/7)
+        int tableRow = (p.color == GamePanel.WHITE) ? row : 7 - row;
         
         switch (p.type) {
-            case PAWN:
-                return PAWN_TABLE[row][col];
-            case KNIGHT:
-                return KNIGHT_TABLE[row][col];
-            case BISHOP:
-                return (int)((3 - Math.abs(3.5 - row)) * 5 + (3 - Math.abs(3.5 - col)) * 5);
-            case ROOK:
-                return (row == 1 || row == 6) ? 20 : 0;
-            case QUEEN:
-                return (int)((3 - Math.abs(3.5 - row)) * 3 + (3 - Math.abs(3.5 - col)) * 3);
-            case KING:
-                int pieceCount = GamePanel.pieces.size();
-                if (pieceCount < 10) {
-                    return (int)((3 - Math.abs(3.5 - row)) * 5 + (3 - Math.abs(3.5 - col)) * 5);
-                } else {
-                    return (int)(-(Math.abs(3.5 - row)) * 5 - (Math.abs(3.5 - col)) * 5);
-                }
-            default:
-                return 0;
+            case PAWN: return PAWN_TABLE[tableRow][col];
+            case KNIGHT: return KNIGHT_TABLE[tableRow][col];
+            case BISHOP: return BISHOP_TABLE[tableRow][col];
+            case ROOK: return ROOK_TABLE[tableRow][col];
+            case QUEEN: return QUEEN_TABLE[tableRow][col];
+            case KING: return isEndgame ? KING_END_TABLE[tableRow][col] : KING_MID_TABLE[tableRow][col];
+            default: return 0;
         }
     }
     
-    private int evaluateMobility(int color) {
-        int aiMoves = getAllLegalMoves(color).size();
-        int opponentMoves = getAllLegalMoves(1 - color).size();
-        return (aiMoves - opponentMoves) * 2;
-    }
-    
-    private int evaluateKingSafety(int color) {
-        piece king = findKing(color);
-        if (king == null) return 0;
-        
-        int safety = 0;
-        int pawnShield = 0;
-        
-        if (color == GamePanel.WHITE) {
-            for (int c = king.col - 1; c <= king.col + 1; c++) {
-                if (c < 0 || c > 7) continue;
-                if (king.row - 1 < 0) continue;
-                piece p = GamePanel.board[c][king.row - 1];
-                if (p != null && p.type == Type.PAWN && p.color == color) {
-                    pawnShield++;
-                }
-            }
-        } else {
-            for (int c = king.col - 1; c <= king.col + 1; c++) {
-                if (c < 0 || c > 7) continue;
-                if (king.row + 1 > 7) continue;
-                piece p = GamePanel.board[c][king.row + 1];
-                if (p != null && p.type == Type.PAWN && p.color == color) {
-                    pawnShield++;
-                }
-            }
-        }
-        
-        safety += pawnShield * 10;
-        return safety;
-    }
-    
+    // --- Move Ordering (MVV-LVA) ---
     private void orderMoves(ArrayList<Move> moves) {
         Collections.sort(moves, new Comparator<Move>() {
             @Override
             public int compare(Move m1, Move m2) {
-                int score1 = getMoveOrderScore(m1);
-                int score2 = getMoveOrderScore(m2);
+                // Priority 1: Captures (MVV-LVA)
+                int score1 = 0;
+                int score2 = 0;
+                
+                piece cap1 = GamePanel.board[m1.toCol][m1.toRow];
+                piece cap2 = GamePanel.board[m2.toCol][m2.toRow];
+                
+                if (cap1 != null) {
+                    score1 = 10 * getPieceValue(cap1.type) - getPieceValue(m1.piece.type);
+                }
+                if (cap2 != null) {
+                    score2 = 10 * getPieceValue(cap2.type) - getPieceValue(m2.piece.type);
+                }
+                
                 return score2 - score1;
             }
         });
     }
     
-    private int getMoveOrderScore(Move move) {
-        int score = 0;
-        
-        piece captured = GamePanel.board[move.toCol][move.toRow];
-        if (captured != null) {
-            score += 1000 + getPieceValue(captured.type);
-        }
-        
-        int centerDist = (int)(Math.abs(move.toCol - 3.5) + Math.abs(move.toRow - 3.5));
-        score += (7 - centerDist) * 10;
-        
-        return score;
-    }
-    
+    // --- Engine Mechanics (Make/Undo) ---
+    // These remain largely the same, just checking they are safe
     private BoardState makeMove(Move move) {
         BoardState state = new BoardState();
         state.piece = move.piece;
@@ -266,14 +336,12 @@ public class ChessAI {
         state.moved = move.piece.moved;
         state.twoStepped = move.piece.twoStepped;
         
-        // Execute move on board array
         GamePanel.board[move.fromCol][move.fromRow] = null;
         GamePanel.board[move.toCol][move.toRow] = move.piece;
         move.piece.col = move.toCol;
         move.piece.row = move.toRow;
         move.piece.moved = true;
         
-        // Remove captured piece from pieces list
         if (state.capturedPiece != null) {
             GamePanel.pieces.remove(state.capturedPiece);
         }
@@ -282,17 +350,14 @@ public class ChessAI {
     }
     
     private void undoMove(BoardState state) {
-        // Restore piece position
         state.piece.col = state.fromCol;
         state.piece.row = state.fromRow;
         state.piece.moved = state.moved;
         state.piece.twoStepped = state.twoStepped;
         
-        // Restore board array
         GamePanel.board[state.fromCol][state.fromRow] = state.piece;
         GamePanel.board[state.toCol][state.toRow] = state.capturedPiece;
         
-        // Restore captured piece to pieces list
         if (state.capturedPiece != null) {
             GamePanel.pieces.add(state.capturedPiece);
         }
@@ -300,7 +365,8 @@ public class ChessAI {
     
     private ArrayList<Move> getAllLegalMoves(int color) {
         ArrayList<Move> moves = new ArrayList<>();
-        
+        // Creating a copy of the list to avoid ConcurrentModificationExceptions
+        // if something weird happens, though usually in single thread it's fine.
         for (piece p : new ArrayList<>(GamePanel.pieces)) {
             if (p.color != color) continue;
             
@@ -309,7 +375,6 @@ public class ChessAI {
                 moves.add(new Move(p, p.col, p.row, pt.x, pt.y));
             }
         }
-        
         return moves;
     }
     
