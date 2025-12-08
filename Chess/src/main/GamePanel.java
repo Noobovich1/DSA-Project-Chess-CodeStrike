@@ -38,6 +38,12 @@ public class GamePanel extends JPanel implements Runnable {
     private ArrayList<Point> legalMoves = new ArrayList<>();
     private boolean promotion = false;
     
+    // --- LAST MOVE HIGHLIGHT VARIABLES ---
+    private int lastFromCol = -1;
+    private int lastFromRow = -1;
+    private int lastToCol = -1;
+    private int lastToRow = -1;
+    
     // Game Over States
     public boolean gameOver = false;     // Checkmate
     public boolean isStalemate = false;  // Stalemate
@@ -130,6 +136,10 @@ public class GamePanel extends JPanel implements Runnable {
         isStalemate = false;
         isDraw = false;
         endReasonText = "";
+        
+        // Reset Last Move Highlight
+        lastFromCol = -1; lastFromRow = -1;
+        lastToCol = -1; lastToRow = -1;
         
         // Reset Repetition History
         repetitionMap.clear();
@@ -285,6 +295,12 @@ public class GamePanel extends JPanel implements Runnable {
     private int getLogicalRow(int displayRow) { return (playAgainstAI && playerChosenColor == BLACK) ? 7 - displayRow : displayRow; }
 
     private void executeMove(int fromCol, int fromRow, int toCol, int toRow) {
+        // --- RECORD MOVE FOR HIGHLIGHT ---
+        this.lastFromCol = fromCol;
+        this.lastFromRow = fromRow;
+        this.lastToCol = toCol;
+        this.lastToRow = toRow;
+
         piece p = board[fromCol][fromRow];
         piece captured = board[toCol][toRow];
 
@@ -354,7 +370,6 @@ public class GamePanel extends JPanel implements Runnable {
         updateKingCache();
 
         // 3. Check Mate / Stalemate
-        // --- FIX: Use explicit if-else instead of ternary operator to avoid VerifyError ---
         piece king;
         if (CURRENT_COLOR == WHITE) {
             king = whiteKing;
@@ -548,6 +563,9 @@ public class GamePanel extends JPanel implements Runnable {
         }
 
         boardDrawer.draw(g2);
+        
+        // --- DRAW LAST MOVE HIGHLIGHT ---
+        drawLastMove(g2);
 
         piece currentKing;
         if (CURRENT_COLOR == WHITE) {
@@ -567,6 +585,24 @@ public class GamePanel extends JPanel implements Runnable {
         drawLegalMoves(g2, mx, my);
         drawSidebar(g2);
         drawGameOverUI(g2);
+    }
+    
+private void drawLastMove(Graphics2D g2) {
+        if (lastFromCol != -1) {
+            // start square using standard yellow
+            g2.setColor(new Color(255, 235, 59, 150)); 
+            
+            int dFromCol = getDisplayCol(lastFromCol);
+            int dFromRow = getDisplayRow(lastFromRow);
+            g2.fillRect(dFromCol * Board.SQUARE_SIZE, dFromRow * Board.SQUARE_SIZE, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
+
+            // Landing square using golden rod color
+            g2.setColor(new Color(218, 165, 32, 150)); 
+
+            int dToCol = getDisplayCol(lastToCol);
+            int dToRow = getDisplayRow(lastToRow);
+            g2.fillRect(dToCol * Board.SQUARE_SIZE, dToRow * Board.SQUARE_SIZE, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
+        }
     }
     
     private void drawPieces(Graphics2D g2) {
