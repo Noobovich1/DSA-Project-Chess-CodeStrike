@@ -519,6 +519,7 @@ public class GamePanel extends JPanel implements Runnable {
         gamenotover++;}
         else{
             sound.setFile(Sound.MAGIC);
+            sound.setVolume(0.75F);
             sound.play();
             gamenotover=0;
         }
