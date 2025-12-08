@@ -6,12 +6,12 @@ import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 
 public class ChessAI {
     private GamePanel gp;
     private int engineColor;
     
-    // Piece values
     private static final int PAWN_VALUE = 100;
     private static final int KNIGHT_VALUE = 320;
     private static final int BISHOP_VALUE = 330;
@@ -20,8 +20,9 @@ public class ChessAI {
     private static final int KING_VALUE = 20000;
     
     private int searchDepth = 4;
+    private HashSet<String> gameHistoryToCheck = new HashSet<>();
     
-    // Tables
+    // Tables Omitted for Brevity (Same as previous)
     private static final int[][] PAWN_TABLE = {
         {0,  0,  0,  0,  0,  0,  0,  0},
         {50, 50, 50, 50, 50, 50, 50, 50},
@@ -85,7 +86,7 @@ public class ChessAI {
         {-20,-30,-30,-40,-40,-30,-30,-20},
         {-10,-20,-20,-20,-20,-20,-20,-10},
         {20, 20,  0,  0,  0,  0, 20, 20},
-        {20, 40, 10,  0,  0, 10, 40, 20} // Boosted castling squares (40)
+        {20, 40, 10,  0,  0, 10, 40, 20}
     };
 
     private static final int[][] KING_END_TABLE = {
@@ -105,6 +106,10 @@ public class ChessAI {
     
     public void setDepth(int depth) {
         this.searchDepth = depth;
+    }
+
+    public void setHistory(ArrayList<String> history) {
+        this.gameHistoryToCheck = new HashSet<>(history);
     }
     
     public Move getBestMove(int aiColor) {
@@ -136,7 +141,22 @@ public class ChessAI {
             int maxScore = Integer.MIN_VALUE;
             for (Move move : moves) {
                 BoardState state = makeMove(move);
-                int score = minimax(depth - 1, 1 - color, alpha, beta, false).score;
+                
+                boolean isRepetition = false;
+                if (depth == searchDepth) {
+                     String currentBoardId = gp.generateBoardId();
+                     if (gameHistoryToCheck.contains(currentBoardId)) {
+                         isRepetition = true;
+                     }
+                }
+                
+                int score;
+                if (isRepetition) {
+                    score = -5000; 
+                } else {
+                    score = minimax(depth - 1, 1 - color, alpha, beta, false).score;
+                }
+
                 undoMove(state);
                 
                 if (score > maxScore) {
@@ -212,9 +232,16 @@ public class ChessAI {
     private int evaluateBoard() {
         int whiteScore = 0;
         int blackScore = 0;
-        boolean isEndgame = GamePanel.pieces.size() < 12;
+        
+        // Synchronized access to pieces during evaluation
+        ArrayList<piece> currentPieces;
+        synchronized(GamePanel.pieces) {
+             currentPieces = new ArrayList<>(GamePanel.pieces);
+        }
+        
+        boolean isEndgame = currentPieces.size() < 12;
 
-        for (piece p : GamePanel.pieces) {
+        for (piece p : currentPieces) {
             int material = getPieceValue(p.type);
             int position = getPositionValue(p, isEndgame);
             
@@ -274,7 +301,7 @@ public class ChessAI {
         });
     }
     
-    // --- UPDATED: HANDLE CASTLING RINGS IN SIMULATION ---
+    // --- FIXED: SYNCHRONIZED MODIFICATIONS ---
     private BoardState makeMove(Move move) {
         BoardState state = new BoardState();
         state.piece = move.piece;
@@ -292,19 +319,22 @@ public class ChessAI {
         move.piece.row = move.toRow;
         move.piece.moved = true;
         
-        // Handle Castling in simulation (Move the Rook)
+        if (move.piece.type == Type.PAWN && (move.toRow == 0 || move.toRow == 7)) {
+            state.promoted = true;
+            move.piece.type = Type.QUEEN;
+        }
+        
         if (move.piece.type == Type.KING && Math.abs(move.toCol - move.fromCol) == 2) {
             state.castled = true;
-            if (move.toCol > move.fromCol) { // Kingside
+            if (move.toCol > move.fromCol) { 
                 state.rook = GamePanel.board[7][move.fromRow];
                 state.rookFromCol = 7;
                 state.rookToCol = 5;
-            } else { // Queenside
+            } else { 
                 state.rook = GamePanel.board[0][move.fromRow];
                 state.rookFromCol = 0;
                 state.rookToCol = 3;
             }
-            // Move rook
             if (state.rook != null) {
                 GamePanel.board[state.rookFromCol][move.fromRow] = null;
                 GamePanel.board[state.rookToCol][move.fromRow] = state.rook;
@@ -312,7 +342,11 @@ public class ChessAI {
             }
         }
         
-        if (state.capturedPiece != null) GamePanel.pieces.remove(state.capturedPiece);
+        if (state.capturedPiece != null) {
+            synchronized(GamePanel.pieces) {
+                GamePanel.pieces.remove(state.capturedPiece);
+            }
+        }
         return state;
     }
     
@@ -321,6 +355,10 @@ public class ChessAI {
         state.piece.row = state.fromRow;
         state.piece.moved = state.moved;
         state.piece.twoStepped = state.twoStepped;
+        
+        if (state.promoted) {
+            state.piece.type = Type.PAWN;
+        }
         
         GamePanel.board[state.fromCol][state.fromRow] = state.piece;
         GamePanel.board[state.toCol][state.toRow] = state.capturedPiece;
@@ -331,12 +369,22 @@ public class ChessAI {
             state.rook.col = state.rookFromCol;
         }
         
-        if (state.capturedPiece != null) GamePanel.pieces.add(state.capturedPiece);
+        if (state.capturedPiece != null) {
+            synchronized(GamePanel.pieces) {
+                GamePanel.pieces.add(state.capturedPiece);
+            }
+        }
     }
     
     private ArrayList<Move> getAllLegalMoves(int color) {
         ArrayList<Move> moves = new ArrayList<>();
-        for (piece p : new ArrayList<>(GamePanel.pieces)) {
+        ArrayList<piece> safeList;
+        // Synchronized copy
+        synchronized(GamePanel.pieces) {
+             safeList = new ArrayList<>(GamePanel.pieces);
+        }
+        
+        for (piece p : safeList) {
             if (p.color != color) continue;
             ArrayList<Point> legalMoves = p.getLegalMoves();
             for (Point pt : legalMoves) moves.add(new Move(p, p.col, p.row, pt.x, pt.y));
@@ -345,8 +393,10 @@ public class ChessAI {
     }
     
     private piece findKing(int color) {
-        for (piece p : GamePanel.pieces) {
-            if (p.type == Type.KING && p.color == color) return p;
+        synchronized(GamePanel.pieces) {
+            for (piece p : GamePanel.pieces) {
+                if (p.type == Type.KING && p.color == color) return p;
+            }
         }
         return null;
     }
@@ -377,9 +427,9 @@ public class ChessAI {
         int fromCol, fromRow, toCol, toRow;
         piece capturedPiece;
         boolean moved, twoStepped;
-        // Castling state
         boolean castled = false;
         piece rook;
         int rookFromCol, rookToCol;
+        boolean promoted = false;
     }
 }

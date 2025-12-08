@@ -116,16 +116,18 @@ public abstract class piece {
 
         // Find our King
         piece king = null;
-        for (piece p : GamePanel.pieces) {
-            if (p.type == Type.KING && p.color == this.color) {
-                king = p;
-                break;
+        // Accessing GamePanel.pieces here needs synchronization too if called from UI
+        synchronized(GamePanel.pieces) {
+            for (piece p : GamePanel.pieces) {
+                if (p.type == Type.KING && p.color == this.color) {
+                    king = p;
+                    break;
+                }
             }
         }
 
         boolean check = false;
         if (king != null) {
-            //Check if attacked, BUT IGNORE THE PIECE WE JUST CAPTURED
             check = king.isAttacked(captured);
         }
 
@@ -138,18 +140,18 @@ public abstract class piece {
         return check;
     }
 
-    // Standard isAttacked (for normal game loop)
     public boolean isAttacked() {
         return isAttacked(null);
     }
 
-    // Overloaded isAttacked (for move simulation)
+    // --- FIXED: ADDED SYNCHRONIZATION TO PREVENT CRASH ---
     public boolean isAttacked(piece ignoredPiece) {
-        for (piece p : GamePanel.pieces) {
-            if (p == ignoredPiece) continue; // IGNORE THE CAPTURED PHANTOM (FORCES) PIECE
-            
-            if (p.color != this.color && p.canMove(this.col, this.row)) {
-                return true;
+        synchronized(GamePanel.pieces) {
+            for (piece p : GamePanel.pieces) {
+                if (p == ignoredPiece) continue; 
+                if (p.color != this.color && p.canMove(this.col, this.row)) {
+                    return true;
+                }
             }
         }
         return false;
