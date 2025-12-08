@@ -6,6 +6,7 @@ import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 
 public class ChessAI {
     private GamePanel gp;
@@ -20,8 +21,9 @@ public class ChessAI {
     private static final int KING_VALUE = 20000;
     
     private int searchDepth = 4;
+    private HashSet<String> gameHistoryToCheck = new HashSet<>();
     
-    // Tables
+    // Tables (Left unchanged for brevity, assume they exist as in original)
     private static final int[][] PAWN_TABLE = {
         {0,  0,  0,  0,  0,  0,  0,  0},
         {50, 50, 50, 50, 50, 50, 50, 50},
@@ -85,7 +87,7 @@ public class ChessAI {
         {-20,-30,-30,-40,-40,-30,-30,-20},
         {-10,-20,-20,-20,-20,-20,-20,-10},
         {20, 20,  0,  0,  0,  0, 20, 20},
-        {20, 40, 10,  0,  0, 10, 40, 20} // Boosted castling squares (40)
+        {20, 40, 10,  0,  0, 10, 40, 20}
     };
 
     private static final int[][] KING_END_TABLE = {
@@ -105,6 +107,10 @@ public class ChessAI {
     
     public void setDepth(int depth) {
         this.searchDepth = depth;
+    }
+
+    public void setHistory(ArrayList<String> history) {
+        this.gameHistoryToCheck = new HashSet<>(history);
     }
     
     public Move getBestMove(int aiColor) {
@@ -136,7 +142,26 @@ public class ChessAI {
             int maxScore = Integer.MIN_VALUE;
             for (Move move : moves) {
                 BoardState state = makeMove(move);
-                int score = minimax(depth - 1, 1 - color, alpha, beta, false).score;
+                
+                // --- FIX: REPETITION DETECTION ---
+                // If we are at the root level (depth == searchDepth), check if this move 
+                // creates a board state seen before.
+                boolean isRepetition = false;
+                if (depth == searchDepth) {
+                     String currentBoardId = gp.generateBoardId();
+                     if (gameHistoryToCheck.contains(currentBoardId)) {
+                         isRepetition = true;
+                     }
+                }
+                
+                int score;
+                if (isRepetition) {
+                    // Penalize repetition heavily to force progress, but not as bad as losing
+                    score = -5000; 
+                } else {
+                    score = minimax(depth - 1, 1 - color, alpha, beta, false).score;
+                }
+
                 undoMove(state);
                 
                 if (score > maxScore) {
@@ -274,7 +299,6 @@ public class ChessAI {
         });
     }
     
-    // --- UPDATED: HANDLE CASTLING RINGS IN SIMULATION ---
     private BoardState makeMove(Move move) {
         BoardState state = new BoardState();
         state.piece = move.piece;
@@ -292,7 +316,14 @@ public class ChessAI {
         move.piece.row = move.toRow;
         move.piece.moved = true;
         
-        // Handle Castling in simulation (Move the Rook)
+        // --- FIX: PROMOTION SIMULATION ---
+        // If pawn hits end, momentarily change it to Queen for evaluation
+        if (move.piece.type == Type.PAWN && (move.toRow == 0 || move.toRow == 7)) {
+            state.promoted = true;
+            move.piece.type = Type.QUEEN;
+        }
+        
+        // Handle Castling in simulation
         if (move.piece.type == Type.KING && Math.abs(move.toCol - move.fromCol) == 2) {
             state.castled = true;
             if (move.toCol > move.fromCol) { // Kingside
@@ -304,7 +335,6 @@ public class ChessAI {
                 state.rookFromCol = 0;
                 state.rookToCol = 3;
             }
-            // Move rook
             if (state.rook != null) {
                 GamePanel.board[state.rookFromCol][move.fromRow] = null;
                 GamePanel.board[state.rookToCol][move.fromRow] = state.rook;
@@ -322,6 +352,11 @@ public class ChessAI {
         state.piece.moved = state.moved;
         state.piece.twoStepped = state.twoStepped;
         
+        // --- FIX: REVERT PROMOTION ---
+        if (state.promoted) {
+            state.piece.type = Type.PAWN;
+        }
+        
         GamePanel.board[state.fromCol][state.fromRow] = state.piece;
         GamePanel.board[state.toCol][state.toRow] = state.capturedPiece;
         
@@ -336,6 +371,7 @@ public class ChessAI {
     
     private ArrayList<Move> getAllLegalMoves(int color) {
         ArrayList<Move> moves = new ArrayList<>();
+        // Clone the list to avoid ConcurrentModificationException during simulation
         for (piece p : new ArrayList<>(GamePanel.pieces)) {
             if (p.color != color) continue;
             ArrayList<Point> legalMoves = p.getLegalMoves();
@@ -377,9 +413,10 @@ public class ChessAI {
         int fromCol, fromRow, toCol, toRow;
         piece capturedPiece;
         boolean moved, twoStepped;
-        // Castling state
         boolean castled = false;
         piece rook;
         int rookFromCol, rookToCol;
+        // Added for promotion fix
+        boolean promoted = false;
     }
 }
