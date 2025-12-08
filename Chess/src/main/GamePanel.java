@@ -209,7 +209,7 @@ public class GamePanel extends JPanel implements Runnable {
                 } 
                 else if (btnBot3.contains(mx, my)) {
                     selectedBotName = "Mr. Tung (Hard)";
-                    selectedBotDepth = 4;
+                    selectedBotDepth = 5;
                     selectedBotImage = imgTung;
                 }
                 else if (btnColorWhite.contains(mx, my)) playerChosenColor = WHITE;
@@ -515,7 +515,7 @@ public class GamePanel extends JPanel implements Runnable {
 
         drawBotCard(g2, btnBot1, "Chi Bao", "Easy (Depth 2)", imgChiBao, selectedBotDepth == 2, mx, my);
         drawBotCard(g2, btnBot2, "Gia", "Normal (Depth 3)", imgGia, selectedBotDepth == 3, mx, my);
-        drawBotCard(g2, btnBot3, "Mr. Tung", "Hard (Depth 4)", imgTung, selectedBotDepth == 4, mx, my);
+        drawBotCard(g2, btnBot3, "Mr. Tung", "Hard (Depth 5)", imgTung, selectedBotDepth == 5, mx, my);
 
         g2.setColor(Color.WHITE);
         g2.drawString("Choose Your Color:", 400, 530);
