@@ -18,6 +18,7 @@ public class Sound {
     public static final int GAME_END = 5;
     public static final int PROMOTE = 6;
     public static final int ILLEGAL = 7;
+    public static final int MAGIC=8;
 
     private static final String[] soundFiles = {
             "/SoundEffect/move-self.wav",      // Normal move
@@ -28,6 +29,7 @@ public class Sound {
             "/SoundEffect/bruh.wav",
             "/SoundEffect/bruh.wav",
             "/SoundEffect/bruh.wav",
+            "/SoundEffect/Magic.wav"
             /*"/sound/castle.wav",    // Castling
             "/sound/check.wav",     // Check
             "/sound/start.wav",     // Game start
