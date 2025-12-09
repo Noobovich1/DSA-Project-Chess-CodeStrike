@@ -14,7 +14,18 @@ public abstract class piece {
     public int color;
     public boolean moved = false, twoStepped = false;
     public Type type;
+    //resize function
+    public BufferedImage scaleImage(BufferedImage original, int width, int height){
+        BufferedImage scaled = new BufferedImage(width, height, original.getType());
+        Graphics2D g2 = scaled.createGraphics();
 
+        //prevents blurring
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+
+        g2.drawImage(original, 0,0, width, height, null);
+        g2.dispose();
+        return scaled;
+    }
     public piece(int color, int col, int row) {
         this.color = color;
         this.col = col;
@@ -26,8 +37,10 @@ public abstract class piece {
     }
 
     public BufferedImage getImage(String path) {
+        BufferedImage original = null;
         try {
-            return ImageIO.read(getClass().getResourceAsStream(path + ".png"));
+            original = ImageIO.read(getClass().getResourceAsStream(path + ".png"));
+            return scaleImage(original, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
         } catch (IOException e) {
             e.printStackTrace();
             return null;
