@@ -5,6 +5,8 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -30,6 +32,10 @@ public class GamePanel extends JPanel implements Runnable {
     private piece whiteKing, blackKing;
     public static ArrayList<piece> capturedWhite = new ArrayList<>();
     public static ArrayList<piece> capturedBlack = new ArrayList<>();
+    
+    // --- DISPLAY DUMMIES (For Sidebar) ---
+    private Pawn dummyWhitePawn;
+    private Pawn dummyBlackPawn;
 
     // --- DRAW / ENDGAME DETECTION ---
     private Map<String, Integer> repetitionMap = new HashMap<>();
@@ -38,6 +44,12 @@ public class GamePanel extends JPanel implements Runnable {
     
     private ArrayList<Point> legalMoves = new ArrayList<>();
     private boolean promotion = false;
+    
+    // --- LAST MOVE HIGHLIGHT VARIABLES ---
+    private int lastFromCol = -1;
+    private int lastFromRow = -1;
+    private int lastToCol = -1;
+    private int lastToRow = -1;
     
     // Game Over States
     public boolean gameOver = false;     // Checkmate
@@ -91,6 +103,10 @@ public class GamePanel extends JPanel implements Runnable {
 
         loadImages();
         
+        // Initialize dummies once to avoid IO lag during render
+        dummyWhitePawn = new Pawn(WHITE, 0, 0);
+        dummyBlackPawn = new Pawn(BLACK, 0, 0);
+        
         ai = new ChessAI(this);
         selectedBotImage = imgGia; 
     }
@@ -131,6 +147,10 @@ public class GamePanel extends JPanel implements Runnable {
         isStalemate = false;
         isDraw = false;
         endReasonText = "";
+        
+        // Reset Last Move Highlight
+        lastFromCol = -1; lastFromRow = -1;
+        lastToCol = -1; lastToRow = -1;
         
         // Reset Repetition History
         repetitionMap.clear();
@@ -285,13 +305,25 @@ public class GamePanel extends JPanel implements Runnable {
     private int getLogicalRow(int displayRow) { return (playAgainstAI && playerChosenColor == BLACK) ? 7 - displayRow : displayRow; }
 
     private void executeMove(int fromCol, int fromRow, int toCol, int toRow) {
+        // --- RECORD MOVE FOR HIGHLIGHT ---
+        this.lastFromCol = fromCol;
+        this.lastFromRow = fromRow;
+        this.lastToCol = toCol;
+        this.lastToRow = toRow;
+
         piece p = board[fromCol][fromRow];
         piece captured = board[toCol][toRow];
 
         if (captured != null) {
             pieces.remove(captured);
-            if(captured.color == WHITE) capturedWhite.add(captured);
-            if(captured.color == BLACK) capturedBlack.add(captured);
+            if(captured.color == WHITE) {
+                capturedWhite.add(captured);
+                sortCapturedPieces(capturedWhite);
+            }
+            if(captured.color == BLACK) {
+                capturedBlack.add(captured);
+                sortCapturedPieces(capturedBlack);
+            }
             capSE();
             repetitionMap.clear(); 
         } else {
@@ -346,6 +378,69 @@ public class GamePanel extends JPanel implements Runnable {
         finishTurn();
     }
     
+    // --- Helper for Sorting Captured Pieces ---
+    private void sortCapturedPieces(ArrayList<piece> list) {
+        Collections.sort(list, new Comparator<piece>() {
+            @Override
+            public int compare(piece p1, piece p2) {
+                return getCapturedPieceValue(p2.type) - getCapturedPieceValue(p1.type);
+            }
+        });
+    }
+
+    private int getCapturedPieceValue(Type type) {
+        switch (type) {
+            case QUEEN: return 900;
+            case ROOK: return 500;
+            case BISHOP: return 330;
+            case KNIGHT: return 320;
+            case PAWN: return 100;
+            default: return 0;
+        }
+    }
+    
+    // --- Helper for UI Material Difference ---
+    private int getDisplayMaterialValue(Type type) {
+        switch (type) {
+            case QUEEN: return 9;
+            case ROOK: return 5;
+            case BISHOP: return 3;
+            case KNIGHT: return 3;
+            case PAWN: return 1;
+            default: return 0;
+        }
+    }
+    
+    // --- Process List for Sidebar (Queens -> Pawns) ---
+    private ArrayList<piece> processCapturedList(ArrayList<piece> captured) {
+        ArrayList<piece> displayList = new ArrayList<>();
+        int queenCount = 0;
+        
+        // Use a shallow copy to iterate since sorting might change order,
+        // but the input list is already sorted by value (Queens first).
+        
+        for (piece p : captured) {
+            if (p.type == Type.QUEEN) {
+                queenCount++;
+                if (queenCount == 1) {
+                    displayList.add(p);
+                } else {
+                    // It's an extra queen, display as Pawn
+                    if (p.color == WHITE) displayList.add(dummyWhitePawn);
+                    else displayList.add(dummyBlackPawn);
+                }
+            } else {
+                displayList.add(p);
+            }
+        }
+        
+        // Re-sort the display list because the "new" pawns (formerly queens)
+        // should appear at the end of the list, not the top.
+        sortCapturedPieces(displayList);
+        
+        return displayList;
+    }
+    
     private void finishTurn() {
         // 1. Record Board State for Repetition
         recordBoardState();
@@ -355,7 +450,6 @@ public class GamePanel extends JPanel implements Runnable {
         updateKingCache();
 
         // 3. Check Mate / Stalemate
-        // --- FIX: Use explicit if-else instead of ternary operator to avoid VerifyError ---
         piece king;
         if (CURRENT_COLOR == WHITE) {
             king = whiteKing;
@@ -581,6 +675,9 @@ public class GamePanel extends JPanel implements Runnable {
         }
 
         boardDrawer.draw(g2);
+        
+        // --- DRAW LAST MOVE HIGHLIGHT ---
+        drawLastMove(g2);
 
         piece currentKing;
         if (CURRENT_COLOR == WHITE) {
@@ -600,6 +697,24 @@ public class GamePanel extends JPanel implements Runnable {
         drawLegalMoves(g2, mx, my);
         drawSidebar(g2);
         drawGameOverUI(g2);
+    }
+    
+private void drawLastMove(Graphics2D g2) {
+        if (lastFromCol != -1) {
+            // start square using standard yellow
+            g2.setColor(new Color(255, 235, 59, 150)); 
+            
+            int dFromCol = getDisplayCol(lastFromCol);
+            int dFromRow = getDisplayRow(lastFromRow);
+            g2.fillRect(dFromCol * Board.SQUARE_SIZE, dFromRow * Board.SQUARE_SIZE, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
+
+            // Landing square using golden rod color
+            g2.setColor(new Color(218, 165, 32, 150)); 
+
+            int dToCol = getDisplayCol(lastToCol);
+            int dToRow = getDisplayRow(lastToRow);
+            g2.fillRect(dToCol * Board.SQUARE_SIZE, dToRow * Board.SQUARE_SIZE, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
+        }
     }
     
     private void drawPieces(Graphics2D g2) {
@@ -688,12 +803,12 @@ public class GamePanel extends JPanel implements Runnable {
         g2.fill(btnPvP);
         g2.setColor(Color.BLACK);
         g2.setFont(new Font("Arial", Font.BOLD, 40));
-        g2.drawString("Human vs Human", btnPvP.x + 20, btnPvP.y + 55);
+        g2.drawString("Human vs Human", btnPvP.x + 32, btnPvP.y + 55);
         
         g2.setColor(btnPvE.contains(mx, my) ? Color.CYAN : Color.WHITE);
         g2.fill(btnPvE);
         g2.setColor(Color.BLACK);
-        g2.drawString("Human vs AI", btnPvE.x + 75, btnPvE.y + 55);
+        g2.drawString("Human vs AI", btnPvE.x + 76, btnPvE.y + 55);
     }
 
     private void drawAISelectionScreen(Graphics2D g2, int mx, int my) {
@@ -702,7 +817,7 @@ public class GamePanel extends JPanel implements Runnable {
 
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 50));
-        g2.drawString("Choose Opponent", 400, 100);
+        g2.drawString("Choose Your Opponent", 320, 100);
 
         drawBotCard(g2, btnBot1, "Chi Bao", "Easy (Depth 2)", imgChiBao, selectedBotDepth == 2, mx, my);
         drawBotCard(g2, btnBot2, "Gia", "Normal (Depth 3)", imgGia, selectedBotDepth == 3, mx, my);
@@ -715,13 +830,13 @@ public class GamePanel extends JPanel implements Runnable {
         if (btnColorWhite.contains(mx, my)) g2.setColor(Color.CYAN);
         g2.fill(btnColorWhite);
         g2.setColor(Color.BLACK);
-        g2.drawString("WHITE", btnColorWhite.x + 20, btnColorWhite.y + 45);
+        g2.drawString("WHITE", btnColorWhite.x + 46, btnColorWhite.y + 36);
 
         g2.setColor(playerChosenColor == BLACK ? Color.GREEN : Color.GRAY);
         if (btnColorBlack.contains(mx, my)) g2.setColor(Color.CYAN);
         g2.fill(btnColorBlack);
         g2.setColor(Color.WHITE);
-        g2.drawString("BLACK", btnColorBlack.x + 20, btnColorBlack.y + 45);
+        g2.drawString("BLACK", btnColorBlack.x + 46, btnColorBlack.y + 36);
 
         g2.setColor(btnStartGame.contains(mx, my) ? Color.CYAN : Color.MAGENTA);
         g2.fill(btnStartGame);
@@ -770,65 +885,82 @@ public class GamePanel extends JPanel implements Runnable {
             new Bishop(CURRENT_COLOR,10,3).draw(g2);
             new Queen(CURRENT_COLOR,10,4).draw(g2);
         } else if (!gameOver && !isStalemate && !isDraw) {
-            g2.drawString(CURRENT_COLOR == WHITE ? "White's turn" : "Black's turn", 870, 80);
+            g2.drawString(CURRENT_COLOR == WHITE ? "White's turn" : "Black's turn", 902, 80);
 
             if (playAgainstAI) {
                 g2.setColor(Color.LIGHT_GRAY);
                 g2.setFont(new Font("Arial", Font.PLAIN, 24));
-                g2.drawString("Opponent:", 850, 350);
+                g2.drawString("Opponent:", 950, 310);
 
                 if (selectedBotImage != null) {
-                    g2.drawImage(selectedBotImage, 850, 370, 150, 150, null);
+                    g2.drawImage(selectedBotImage, 930, 330, 150, 150, null);
                 }
                 g2.setColor(Color.YELLOW);
                 g2.setFont(new Font("Arial", Font.BOLD, 28));
-                g2.drawString(selectedBotName, 850, 560);
+                g2.drawString(selectedBotName, 850, 520);
 
                 if (aiThinking) {
                     g2.setColor(Color.RED);
                     g2.setFont(new Font("Monospaced", Font.ITALIC, 20));
-                    g2.drawString("Thinking...", 850, 600);
+                    g2.drawString("Thinking...", 850, 560);
                 }
             } else {
-                g2.drawString("PvP Mode", 870, 400);
+                g2.drawString("PvP Mode", 915, 400);
             }
+            
+            // --- MATERIAL DIFFERENCE CALCULATION ---
+            int whiteMaterial = 0;
+            int blackMaterial = 0;
+            
+            // Calculate based on active pieces on board to handle promotions correctly
+            synchronized(pieces) {
+                for(piece p : pieces) {
+                    if (p.type == Type.KING) continue;
+                    if (p.color == WHITE) {
+                        whiteMaterial += getDisplayMaterialValue(p.type);
+                    } else {
+                        blackMaterial += getDisplayMaterialValue(p.type);
+                    }
+                }
+            }
+            
+            int materialDiff = whiteMaterial - blackMaterial;
+
             int x = 840;
             int y = 640;
             int scale = 45;
-            if(playerChosenColor==BLACK) {
-                for (piece p : capturedWhite) {
-                    g2.drawImage(p.image, x, y, scale, scale, null);
-                    x += 40;
-                    if (x > 1100) {
-                        x = 840;
-                        y += 40;
-                    }
-                }
-                x = 840;
-                y = 100;
-                for (piece p : capturedBlack) {
-                    g2.drawImage(p.image, x, y, scale, scale, null);
-                    x += 40;
-                    if (x > 1100) {
-                        x = 840;
-                        y += 40;
-                    }
-                }
-            }
-            else{
-            for(piece p : capturedBlack){
+            
+            // Draw Captured By White (Black Pieces)
+            // Use Processed List to swap extra Queens -> Pawns
+            ArrayList<piece> displayBlack = processCapturedList(capturedBlack);
+            for(piece p : displayBlack){
                 g2.drawImage(p.image, x, y, scale, scale, null);
                 x += 40;
-                if(x > 1100) {x = 840; y += 40;}
+                if(x > 1150) {x = 840; y += 40;}
             }
+            // If White has more material
+            if (materialDiff > 0) {
+                g2.setColor(Color.LIGHT_GRAY);
+                g2.setFont(new Font("Arial", Font.BOLD, 20));
+                g2.drawString("+" + materialDiff, x, y + 30);
+            }
+            
             x = 840;
             y = 100;
-            for(piece p : capturedWhite){
+            
+            // Draw Captured By Black (White Pieces)
+            // Use Processed List to swap extra Queens -> Pawns
+            ArrayList<piece> displayWhite = processCapturedList(capturedWhite);
+            for(piece p : displayWhite){
                 g2.drawImage(p.image, x, y, scale, scale, null);
                 x += 40;
-                if(x > 1100) {x = 840; y += 40;}
-
+                if(x > 1150) {x = 840; y += 40;}
             }
+            // If Black has more material
+            if (materialDiff < 0) {
+                g2.setColor(Color.LIGHT_GRAY);
+                g2.setFont(new Font("Arial", Font.BOLD, 20));
+                g2.drawString("+" + Math.abs(materialDiff), x, y + 30);
             }
         }
     }
