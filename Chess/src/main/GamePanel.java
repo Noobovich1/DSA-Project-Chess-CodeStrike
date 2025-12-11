@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 import piece.*;
@@ -78,8 +79,8 @@ public class GamePanel extends JPanel implements Runnable {
     Rectangle btnColorBlack = new Rectangle(650, 550, 150, 60);
     Rectangle btnStartGame = new Rectangle(450, 650, 300, 80);
     Rectangle btnBack = new Rectangle(50, 50, 100, 50);
-
-    private Sound sound = new Sound();
+    //----------------SoundEffect----------
+    private Sound sound = new Sound();;
 
     // --- AI CONFIGURATION ---
     public ChessAI ai;
@@ -292,7 +293,6 @@ public class GamePanel extends JPanel implements Runnable {
                 executeMove(activePiece.col, activePiece.row, col, row);
             } else {
                 activePiece.resetPosition();
-                illegalSE();
             }
             activePiece = null;
             legalMoves.clear();
@@ -327,7 +327,8 @@ public class GamePanel extends JPanel implements Runnable {
             capSE();
             repetitionMap.clear(); 
         } else {
-            moveSE();
+            int distance= getMoveDistance(fromCol,fromRow,toCol,toRow);
+            moveSE(distance);
         }
 
         if (p.type == Type.PAWN) repetitionMap.clear();
@@ -603,11 +604,19 @@ public class GamePanel extends JPanel implements Runnable {
     }
     
     private void promoSE(){ sound.setFile(sound.PROMOTE); sound.play(); }
-    private void moveSE(){ sound.setFile(sound.MOVE); sound.play(); }
+    private void moveSE(int distance){
+        if(distance>=3){
+            slideSE();
+        }
+        else{
+        sound.setFile(Sound.MOVE);
+        sound.play();
+        }
+    }
     private void capSE(){ sound.setFile(sound.CAPTURE); sound.play(); }
     private void gameSE(){ sound.setFile(sound.GAME_END); sound.play(); }
     private void illegalSE(){
-        if(gamenotover!=3){
+        if(gamenotover<1000){
         sound.setFile(Sound.ILLEGAL);
         sound.play();
         gamenotover++;}
@@ -617,6 +626,30 @@ public class GamePanel extends JPanel implements Runnable {
             sound.play();
             gamenotover=0;
         }
+    }
+    private void slideSE(){
+        int r1= ThreadLocalRandom.current().nextInt(2);
+        switch (r1){
+            case 0:
+                sound.setFile(Sound.SLIDE1);
+                sound.setVolume(2.0F);
+                sound.play();
+                break;
+            case 1:
+                sound.setFile(Sound.SLIDE2);
+                sound.setVolume(2.0F);
+                sound.play();
+                break;
+            case 2:
+                sound.setFile(Sound.SLIDE3);
+                sound.setVolume(2.0F);
+                sound.play();
+                break;
+        }
+
+    }
+    private int getMoveDistance(int fromCol, int fromRow, int toCol, int toRow) {
+        return Math.abs(toCol - fromCol) + Math.abs(toRow - fromRow);
     }
 
     @Override

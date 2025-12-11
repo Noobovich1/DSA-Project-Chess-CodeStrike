@@ -19,6 +19,9 @@ public class Sound {
     public static final int PROMOTE = 6;
     public static final int ILLEGAL = 7;
     public static final int MAGIC=8;
+    public static final int SLIDE1=9;
+    public static final int SLIDE2=10;
+    public static final int SLIDE3=11;
 
     private static final String[] soundFiles = {
             "/SoundEffect/move-self.wav",      // Normal move
@@ -29,7 +32,11 @@ public class Sound {
             "/SoundEffect/bruh.wav",
             "/SoundEffect/bruh.wav",
             "/SoundEffect/bruh.wav",
-            "/SoundEffect/Magic.wav"
+            "/SoundEffect/Magic.wav",
+            "/SoundEffect/Slide/slide1.wav",
+            "/SoundEffect/Slide/slide2.wav",
+            "/SoundEffect/Slide/slide3.wav",
+
             /*"/sound/castle.wav",    // Castling
             "/sound/check.wav",     // Check
             "/sound/start.wav",     // Game start
@@ -111,12 +118,21 @@ public class Sound {
     public void setVolume(float volume) {
         if (volumeControl == null) return;
 
-        volume = Math.max(0.0f, Math.min(1.0f, volume));
+        // Allow volume up to 2.0 (200%)
+        volume = Math.max(0.0f, Math.min(2.0f, volume));
 
         float min = volumeControl.getMinimum();
         float max = volumeControl.getMaximum();
-        float range = max - min;
-        float gain = min + (range * volume);
+
+        // Map 0.0-2.0 to min-max range with amplification
+        float gain;
+        if (volume <= 1.0f) {
+            // Normal range: 0.0 to 1.0 maps to min to 0dB
+            gain = min + ((0 - min) * volume);
+        } else {
+            // Amplified range: 1.0 to 2.0 maps to 0dB to max
+            gain = (volume - 1.0f) * max;
+        }
 
         volumeControl.setValue(gain);
     }
