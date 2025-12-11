@@ -416,9 +416,6 @@ public class GamePanel extends JPanel implements Runnable {
         ArrayList<piece> displayList = new ArrayList<>();
         int queenCount = 0;
         
-        // Use a shallow copy to iterate since sorting might change order,
-        // but the input list is already sorted by value (Queens first).
-        
         for (piece p : captured) {
             if (p.type == Type.QUEEN) {
                 queenCount++;
@@ -434,10 +431,7 @@ public class GamePanel extends JPanel implements Runnable {
             }
         }
         
-        // Re-sort the display list because the "new" pawns (formerly queens)
-        // should appear at the end of the list, not the top.
         sortCapturedPieces(displayList);
-        
         return displayList;
     }
     
@@ -616,13 +610,13 @@ public class GamePanel extends JPanel implements Runnable {
     private void capSE(){ sound.setFile(sound.CAPTURE); sound.play(); }
     private void gameSE(){ sound.setFile(sound.GAME_END); sound.play(); }
     private void illegalSE(){
-        if(gamenotover<1000){
+        if(gamenotover!=3){
         sound.setFile(Sound.ILLEGAL);
         sound.play();
         gamenotover++;}
         else{
             sound.setFile(Sound.MAGIC);
-            sound.setVolume(0.75F);
+            sound.setVolume(0.5F);
             sound.play();
             gamenotover=0;
         }
@@ -912,7 +906,6 @@ private void drawLastMove(Graphics2D g2) {
             int whiteMaterial = 0;
             int blackMaterial = 0;
             
-            // Calculate based on active pieces on board to handle promotions correctly
             synchronized(pieces) {
                 for(piece p : pieces) {
                     if (p.type == Type.KING) continue;
@@ -926,38 +919,63 @@ private void drawLastMove(Graphics2D g2) {
             
             int materialDiff = whiteMaterial - blackMaterial;
 
+            // --- DETERMINE DISPLAY LISTS BASED ON PERSPECTIVE ---
+            ArrayList<piece> bottomList;
+            ArrayList<piece> topList;
+            
+            boolean isBlackView = (playAgainstAI && playerChosenColor == BLACK);
+            
+            if (isBlackView) {
+                // If player is Black (Bottom), they capture White pieces. Bottom List = capturedWhite.
+                bottomList = capturedWhite;
+                // AI is White (Top), they capture Black pieces. Top List = capturedBlack.
+                topList = capturedBlack;
+            } else {
+                // Normal view (White at bottom).
+                bottomList = capturedBlack;
+                topList = capturedWhite;
+            }
+
+            // --- DRAW BOTTOM LIST (Captured by Player/Bottom Side) ---
             int x = 840;
             int y = 640;
             int scale = 45;
             
-            // Draw Captured By White (Black Pieces)
-            // Use Processed List to swap extra Queens -> Pawns
-            ArrayList<piece> displayBlack = processCapturedList(capturedBlack);
-            for(piece p : displayBlack){
+            ArrayList<piece> displayBottom = processCapturedList(bottomList);
+            for(piece p : displayBottom){
                 g2.drawImage(p.image, x, y, scale, scale, null);
                 x += 40;
                 if(x > 1150) {x = 840; y += 40;}
             }
-            // If White has more material
-            if (materialDiff > 0) {
+            
+            // Show score at bottom if bottom side is winning
+            // If Normal View: Bottom is White. Show if materialDiff > 0.
+            // If Black View: Bottom is Black. Show if materialDiff < 0.
+            boolean showBottomScore = isBlackView ? (materialDiff < 0) : (materialDiff > 0);
+            
+            if (showBottomScore) {
                 g2.setColor(Color.LIGHT_GRAY);
                 g2.setFont(new Font("Arial", Font.BOLD, 20));
-                g2.drawString("+" + materialDiff, x, y + 30);
+                g2.drawString("+" + Math.abs(materialDiff), x, y + 30);
             }
             
+            // --- DRAW TOP LIST (Captured by Opponent/Top Side) ---
             x = 840;
             y = 100;
             
-            // Draw Captured By Black (White Pieces)
-            // Use Processed List to swap extra Queens -> Pawns
-            ArrayList<piece> displayWhite = processCapturedList(capturedWhite);
-            for(piece p : displayWhite){
+            ArrayList<piece> displayTop = processCapturedList(topList);
+            for(piece p : displayTop){
                 g2.drawImage(p.image, x, y, scale, scale, null);
                 x += 40;
                 if(x > 1150) {x = 840; y += 40;}
             }
-            // If Black has more material
-            if (materialDiff < 0) {
+            
+            // Show score at top if top side is winning
+            // If Normal View: Top is Black. Show if materialDiff < 0.
+            // If Black View: Top is White. Show if materialDiff > 0.
+            boolean showTopScore = isBlackView ? (materialDiff > 0) : (materialDiff < 0);
+
+            if (showTopScore) {
                 g2.setColor(Color.LIGHT_GRAY);
                 g2.setFont(new Font("Arial", Font.BOLD, 20));
                 g2.drawString("+" + Math.abs(materialDiff), x, y + 30);
