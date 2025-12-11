@@ -45,6 +45,9 @@ public class GamePanel extends JPanel implements Runnable {
     private ArrayList<Point> legalMoves = new ArrayList<>();
     private boolean promotion = false;
     
+    // --- 50-MOVE RULE COUNTER ---
+    private int halfMoveClock = 0; 
+
     // --- LAST MOVE HIGHLIGHT VARIABLES ---
     private int lastFromCol = -1;
     private int lastFromRow = -1;
@@ -147,6 +150,9 @@ public class GamePanel extends JPanel implements Runnable {
         isStalemate = false;
         isDraw = false;
         endReasonText = "";
+        
+        // Reset 50-Move Counter
+        halfMoveClock = 0;
         
         // Reset Last Move Highlight
         lastFromCol = -1; lastFromRow = -1;
@@ -313,7 +319,12 @@ public class GamePanel extends JPanel implements Runnable {
 
         piece p = board[fromCol][fromRow];
         piece captured = board[toCol][toRow];
+        
+        // --- DETERMINE MOVE TYPE (For 50-Move Rule & Repetition) ---
+        boolean isPawnMove = (p.type == Type.PAWN);
+        boolean isCapture = (captured != null);
 
+        // --- HANDLE STANDARD CAPTURE ---
         if (captured != null) {
             pieces.remove(captured);
             if(captured.color == WHITE) {
@@ -325,42 +336,65 @@ public class GamePanel extends JPanel implements Runnable {
                 sortCapturedPieces(capturedBlack);
             }
             capSE();
-            repetitionMap.clear(); 
         } else {
-            int distance= getMoveDistance(fromCol,fromRow,toCol,toRow);
+            // Play move sound if no capture
+            int distance = getMoveDistance(fromCol, fromRow, toCol, toRow);
             moveSE(distance);
         }
 
-        if (p.type == Type.PAWN) repetitionMap.clear();
-
+        // Reset en passant flags for all pieces
         for (piece pc : pieces) pc.twoStepped = false;
 
+        // --- EXECUTE THE MOVE ON BOARD ---
         board[fromCol][fromRow] = null;
         board[toCol][toRow] = p;
         p.col = toCol; p.row = toRow;
         p.updatePos();
 
+        // --- HANDLE CASTLING ---
         if (p instanceof King && Math.abs(toCol - fromCol) == 2) {
             int rookCol = toCol > fromCol ? 7 : 0;
             int rookNew = toCol > fromCol ? 5 : 3;
             piece rook = board[rookCol][fromRow];
-            board[rookCol][fromRow] = null;
-            board[rookNew][fromRow] = rook;
-            rook.col = rookNew;
-            rook.updatePos();
+            if (rook != null) {
+                board[rookCol][fromRow] = null;
+                board[rookNew][fromRow] = rook;
+                rook.col = rookNew;
+                rook.updatePos();
+            }
         }
 
-        if (p instanceof Pawn && captured == null && toCol != fromCol) {
+        // --- HANDLE EN PASSANT CAPTURE ---
+        // If Pawn moved diagonally to empty square, it must be En Passant
+        if (isPawnMove && !isCapture && toCol != fromCol) {
             int captureRow = p.color == WHITE ? toRow + 1 : toRow - 1;
             captured = board[toCol][captureRow];
             if (captured != null) {
                 board[toCol][captureRow] = null;
                 pieces.remove(captured);
+                
+                // Add to captured lists
+                if(captured.color == WHITE) capturedWhite.add(captured);
+                else capturedBlack.add(captured);
+                
+                // Mark as capture for rules
+                isCapture = true; 
+                capSE(); // Play capture sound for En Passant
             }
         }
 
-        if (p instanceof Pawn && (toRow == 0 || toRow == 7)) {
+        // --- UPDATE 50-MOVE RULE & REPETITION MAP ---
+        if (isPawnMove || isCapture) {
+            halfMoveClock = 0;       // Reset 50-move counter
+            repetitionMap.clear();   // Clear history
+        } else {
+            halfMoveClock++;         // Increase 50-move counter
+        }
+
+        // --- CHECK PROMOTION ---
+        if (isPawnMove && (toRow == 0 || toRow == 7)) {
             if (playAgainstAI && CURRENT_COLOR != playerChosenColor) {
+                // Auto-promote for AI (to Queen)
                 pieces.remove(p);
                 piece queen = new Queen(CURRENT_COLOR, toCol, toRow);
                 board[toCol][toRow] = queen;
@@ -369,6 +403,7 @@ public class GamePanel extends JPanel implements Runnable {
                 finishTurn();
                 return;
             } else {
+                // Wait for player input
                 promotion = true;
                 promoSE();
                 promoPiece = p;
@@ -444,6 +479,7 @@ public class GamePanel extends JPanel implements Runnable {
         updateKingCache();
 
         // 3. Check Mate / Stalemate
+        // FIX: Replaced ternary operator with if-else to prevent VerifyError
         piece king;
         if (CURRENT_COLOR == WHITE) {
             king = whiteKing;
@@ -483,8 +519,14 @@ public class GamePanel extends JPanel implements Runnable {
             isDraw = true;
             endReasonText = "INSUFFICIENT MATERIAL";
         }
+        
+        // 6. Check 50-Move Rule
+        if (halfMoveClock >= 100) {
+            isDraw = true;
+            endReasonText = "50-MOVE RULE";
+        }
 
-        // 6. Continue AI if game not over
+        // 7. Continue AI if game not over
         if (playAgainstAI && !gameOver && !isStalemate && !isDraw) {
             if (CURRENT_COLOR != playerChosenColor) {
                 aiTurn();
